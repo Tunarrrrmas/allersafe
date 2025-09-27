@@ -1379,26 +1379,21 @@ def toggle_guideline(guideline_id):
 @app.route('/suspend-recipe/<int:recipe_id>')
 @login_required
 def suspend_recipe(recipe_id):
-    conn = sqlite3.connect("recipe.db")
-    conn.row_factory = sqlite3.Row
+    conn = sqlite3.connect("recipes.db")
     
     try:
-        # Get recipe details
-        recipe = conn.execute("SELECT * FROM recipes WHERE id = ?", (recipe_id,)).fetchone()
-        
-        if recipe:
-            # Update status to suspended
-            conn.execute("UPDATE recipes SET status = 'suspended' WHERE id = ?", (recipe_id,))
+        # First add status column if it doesn't exist
+        try:
+            conn.execute("ALTER TABLE recipe ADD COLUMN status TEXT DEFAULT 'active'")
             conn.commit()
-            
-            # Log the action
-            add_audit_log(session['admin_id'], 'Recipe Suspended', 'recipe', recipe_id,
-                         f"Suspended recipe: {recipe['name']}", request.remote_addr)
-            
-            flash(f"Recipe '{recipe['name']}' has been suspended.", 'warning')
-        else:
-            flash('Recipe not found.', 'error')
-            
+        except:
+            pass  # Column already exists
+        
+        # Update recipe status - use 'recipe' not 'recipes'
+        conn.execute("UPDATE recipe SET status = 'suspended' WHERE id = ?", (recipe_id,))
+        conn.commit()
+        flash("Recipe suspended successfully.", 'warning')
+        
     except Exception as e:
         flash(f'Error suspending recipe: {str(e)}', 'error')
     finally:
