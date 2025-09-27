@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -111,23 +112,23 @@
             </form>
         </div>
 
-        <!-- Favourite Recipes List -->
-        <h2>My Favourite Recipes</h2>
+        <!-- My Recipes -->
+        <h2>My Recipes</h2>
         <div class="recipes">
-            {% if favourite_recipes %}
-                {% for recipe in favourite_recipes %}
+            {% if user_recipes %}
+                {% for recipe in user_recipes %}
                 <div class="recipe-card">
                     <h3>{{ recipe.title }}</h3>
                     <p>{{ recipe.description }}</p>
-                    <p><small>By: {{ recipe.author }}</small></p>
                 </div>
                 {% endfor %}
             {% else %}
                 <div class="no-recipes">
-                    <p>You haven't added any favourite recipes yet.</p>
+                    <p>You haven’t added any recipes yet.</p>
                 </div>
             {% endif %}
         </div>
     </div>
 </body>
 </html>
+```
