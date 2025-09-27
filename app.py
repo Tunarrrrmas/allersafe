@@ -37,11 +37,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Init database
 db = SQLAlchemy(app)
 
-# -------------- Database Initialization ----------------
-def get_db_connection():
-    conn = sqlite3.connect('user.db')  
-    conn.row_factory = sqlite3.Row
-    return conn
 # =========================
 # UTILITIES
 # =========================
@@ -1106,36 +1101,6 @@ def report_recipe(recipe_id):
 
     return render_template('report_recipe.html', recipe=recipe, guidelines=guidelines)
         
-    # --- Main flow ---
-    recipe = get_recipe_by_id(recipe_id)  # must point to the same DB as your recipes
-    if not recipe:
-        flash('Recipe not found.', 'danger')
-        return redirect(url_for('home'))
-
-    guidelines = get_active_guidelines()
-
-    if request.method == 'POST':
-        errors, validated_guideline_id, validated_description = validate_report_form(request.form)
-
-        if errors:
-            for error in errors:
-                flash(error, "danger")
-        else:
-            user_id = get_user_id_from_session()
-            if not user_id:
-                flash("You must be logged in to report a recipe.", "danger")
-                return redirect(url_for("login_user"))
-
-            if submit_report(recipe_id, user_id, validated_guideline_id, validated_description):
-                flash('Recipe reported successfully. Thank you for helping keep our community safe.', 'success')
-                return redirect(url_for('recipe_details', recipe_id=recipe_id))
-
-    return render_template('report_recipe.html', recipe=recipe, guidelines=guidelines)
-
-
-
-
-
 @app.route('/recipe-reports')  
 def recipe_reports():
     """View all recipe reports"""
@@ -1415,6 +1380,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
