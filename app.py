@@ -70,8 +70,16 @@ def login_required(f):
             flash('Please log in to access this page.', 'warning')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
-    return decorated_function
+    return decorated_function  
 
+def user_login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            flash('Kena login dulu untuk tengok full recipe')
+            return redirect(url_for('login_user'))
+        return f(*args, **kwargs)
+    return decorated_function
 # ---------------------- USER HELPERS ----------------------
 def get_user_by_id(user_id):
     """Fetch a user by ID from user.db and return a dict or None."""
@@ -1383,6 +1391,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
