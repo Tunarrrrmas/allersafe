@@ -977,12 +977,11 @@ def delete_warning_route(warning_id):
 @app.route('/report-recipe/<int:recipe_id>', methods=['GET', 'POST'])
 def report_recipe(recipe_id):
     """Allow users to report recipes safely"""
-    
+
+    # --- Get current user ID from session ---
     def get_user_id_from_session():
-        """Get user ID from session if logged in"""
         if 'user' not in session:
             return None
-            
         try:
             conn = sqlite3.connect("user.db")
             conn.row_factory = sqlite3.Row
@@ -990,51 +989,54 @@ def report_recipe(recipe_id):
                 "SELECT id FROM users WHERE username = ?", 
                 (session['user'],)
             ).fetchone()
-            user_id = user['id'] if user else None
-            conn.close()
-            return user_id
+            return user['id'] if user else None
         except sqlite3.Error as e:
             app.logger.error(f"Database error fetching user: {e}")
             return None
-    
+        finally:
+            conn.close()
+
+    # --- Fetch active guidelines ---
     def get_active_guidelines():
-        """Fetch active guidelines using database.py function"""
         try:
-            all_guidelines = get_all_guidelines()  # This fetches from admin_panel.db
-            # Filter for active guidelines (is_active = 1)
-            active_guidelines = [g for g in all_guidelines if g.get('is_active', 1) == 1]
-            return active_guidelines
+            all_guidelines = get_all_guidelines()  # from admin_panel.db
+            return [g for g in all_guidelines if g.get('is_active', 1) == 1]
         except Exception as e:
             app.logger.error(f"Error fetching guidelines: {e}")
             flash("Error loading reporting guidelines.", "danger")
             return []
-    
+
+    # --- Validate submitted form ---
     def validate_report_form(form_data):
-        """Validate report form data"""
         errors = []
-        
         guideline_id = form_data.get('guideline_id')
         if not guideline_id or not guideline_id.isdigit():
             errors.append("Please select a valid reporting reason.")
-        
+
         description = form_data.get('description', '').strip()
         if len(description) > 1000:
             errors.append("Description must be less than 1000 characters.")
-            
+
         return errors, int(guideline_id) if guideline_id and guideline_id.isdigit() else None, description
-    
+
+    # --- Submit report into recipe_reports table ---
     def submit_report(recipe_id, user_id, guideline_id, description):
-        """Submit the recipe report to admin_panel.db"""
         try:
-            conn = sqlite3.connect('admin_panel.db')  # Reports go to admin_panel.db
+            conn = sqlite3.connect('admin_panel.db')
+            # Fetch guideline text for better clarity
+            guideline = conn.execute(
+                "SELECT text FROM guidelines WHERE id = ?", (guideline_id,)
+            ).fetchone()
+            reason_text = guideline['text'] if guideline else f"Guideline ID: {guideline_id}"
+
             conn.execute('''
                 INSERT INTO recipe_reports (recipe_id, reporter_id, reason, description, created_at)
                 VALUES (?, ?, ?, ?, datetime('now'))
-            ''', (recipe_id, user_id, f"Guideline ID: {guideline_id}", description))
+            ''', (recipe_id, user_id, reason_text, description))
             conn.commit()
             conn.close()
-            
-            # Add audit log entry
+
+            # Audit log (optional)
             try:
                 add_audit_log(
                     admin_id=None,
@@ -1046,39 +1048,39 @@ def report_recipe(recipe_id):
                 )
             except Exception as audit_error:
                 app.logger.error(f"Error adding audit log: {audit_error}")
-            
+
             return True
         except sqlite3.Error as e:
             app.logger.error(f"Database error submitting report: {e}")
             flash("Error submitting report. Please try again.", "danger")
             return False
-    
-    # Main route logic - Use the fixed database function
-    recipe = get_recipe_by_id(recipe_id)  # This will now work correctly
-    
+
+    # --- Main flow ---
+    recipe = get_recipe_by_id(recipe_id)  # must point to the same DB as your recipes
     if not recipe:
         flash('Recipe not found.', 'danger')
-        return redirect(url_for('home'))  # Redirect to a safe page
-    
+        return redirect(url_for('home'))
+
     guidelines = get_active_guidelines()
-    
+
     if request.method == 'POST':
-        # Validate form data
         errors, validated_guideline_id, validated_description = validate_report_form(request.form)
-        
+
         if errors:
             for error in errors:
                 flash(error, "danger")
         else:
-            # Get user ID
             user_id = get_user_id_from_session()
-            
-            # Submit report
+            if not user_id:
+                flash("You must be logged in to report a recipe.", "danger")
+                return redirect(url_for("login_user"))
+
             if submit_report(recipe_id, user_id, validated_guideline_id, validated_description):
                 flash('Recipe reported successfully. Thank you for helping keep our community safe.', 'success')
                 return redirect(url_for('recipe_details', recipe_id=recipe_id))
-    
+
     return render_template('report_recipe.html', recipe=recipe, guidelines=guidelines)
+
 
 
 
@@ -1387,4 +1389,5 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
