@@ -1043,23 +1043,22 @@ def report_recipe(recipe_id):
 
         return errors, int(guideline_id) if guideline_id and guideline_id.isdigit() else None, description
 
-    # --- Submit report into recipe_reports table ---
-    def submit_report(recipe_id, user_id, guideline_id, description):
-        try:
-            conn = sqlite3.connect('admin_panel.db')
+def submit_report(recipe_id, user_id, guideline_id, description):
+    try:
+        conn = sqlite3.connect('admin_panel.db')
         
-        # FIXED: Use 'title' instead of 'text' column
-            guideline = conn.execute(
-                "SELECT title FROM guidelines WHERE id = ?", (guideline_id,)
-            ).fetchone()
-            reason_text = guideline['title'] if guideline else f"Guideline ID: {guideline_id}"
+        # Use 'title' instead of 'text' column
+        guideline = conn.execute(
+            "SELECT title FROM guidelines WHERE id = ?", (guideline_id,)
+        ).fetchone()
+        reason_text = guideline['title'] if guideline else f"Guideline ID: {guideline_id}"
 
-            conn.execute('''
-                INSERT INTO recipe_reports (recipe_id, reporter_id, reason, description, created_at)
-                VALUES (?, ?, ?, ?, datetime('now'))
-            ''', (recipe_id, user_id, reason_text, description))
-            conn.commit()
-            conn.close()
+        conn.execute('''
+            INSERT INTO recipe_reports (recipe_id, reporter_id, reason, description, created_at)
+            VALUES (?, ?, ?, ?, datetime('now'))
+        ''', (recipe_id, user_id, reason_text, description))
+        conn.commit()
+        conn.close()
         
         # Add audit log
         try:
@@ -1075,7 +1074,7 @@ def report_recipe(recipe_id):
             app.logger.error(f"Error adding audit log: {audit_error}")
         
         return True
-    except sqlite3.Error as e:
+    except sqlite3.Error as e:  # ← THIS EXCEPT BLOCK WAS MISSING!
         app.logger.error(f"Database error submitting report: {e}")
         flash("Error submitting report. Please try again.", "danger")
         return False
@@ -1389,6 +1388,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
