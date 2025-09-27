@@ -457,6 +457,36 @@ def handle_recipe_report(report_id, admin_id, action_taken):
     conn.commit()
     conn.close()
 
+def create_recipe_reports_table():
+    """Create the recipe_reports table in admin_panel.db if it doesn't exist"""
+    try:
+        conn = sqlite3.connect("admin_panel.db")
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS recipe_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recipe_id INTEGER NOT NULL,
+                reporter_id INTEGER,
+                reason TEXT NOT NULL,
+                description TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                handled_by INTEGER,
+                action_taken TEXT
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+        print("Recipe reports table created/verified in admin_panel.db")
+        
+    except Exception as e:
+        print(f"Error creating recipe_reports table: {e}")
+
+# Add this to your app initialization (before running the app)
+create_recipe_reports_table()
+
 # ---------------------- GUIDELINES ----------------------
 
 def get_all_guidelines():
@@ -768,4 +798,5 @@ if __name__ == "__main__":
         for l in logs:
             print(l)
     except Exception as e:
+
         print(f"Demo logging failed: {e}")
