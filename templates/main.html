@@ -5,7 +5,6 @@
     <title>AllerSafe Recipe</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
-
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
@@ -30,7 +29,7 @@
         }
 
         .navbar {
-            background-color: #7a6b18;
+            background-color: #ecd971;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -63,8 +62,8 @@
         .cards {
             display: flex;
             justify-content: center;
-            gap: 50px;
-            margin: 50px 0;
+            gap: 30px;
+            margin: 50px 20px;
             flex-wrap: wrap;
         }
 
@@ -72,7 +71,7 @@
             background: white;
             border-radius: 20px;
             padding: 20px;
-            width: 240px;
+            width: 280px;
             text-align: center;
             box-shadow: 0px 5px 15px rgba(0,0,0,0.15);
             transition: transform 0.2s;
@@ -84,53 +83,60 @@
 
         .card img {
             width: 100%;
+            height: 200px;
+            object-fit: cover;
             border-radius: 15px;
         }
 
-        .rating {
-            margin: 12px 0;
-            font-size: 18px;
-            color: #f5a623;
+        .card h2 {
+            font-size: 20px;
+            color: #333;
+            margin: 15px 0 10px 0;
         }
 
         .card p {
             font-size: 15px;
             color: #444;
+            margin: 8px 0;
+        }
+
+        .card p strong {
+            color: #c96f4a;
+        }
+
+        .rating {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            margin: 12px 0;
+            font-size: 16px;
+            color: #333;
         }
 
         /* Recipe action buttons */
-        .view-recipe-btn, .login-prompt-btn {
+        .login-prompt-btn {
             display: inline-block;
             color: white;
             text-decoration: none;
-            padding: 10px 20px;
-            border-radius: 20px;
+            padding: 12px 20px;
+            border-radius: 25px;
             margin-top: 15px;
             font-size: 14px;
             font-weight: bold;
             transition: all 0.3s;
             cursor: pointer;
-        }
-        
-        .view-recipe-btn {
-            background-color: #c96f4a;
-        }
-        
-        .view-recipe-btn:hover {
-            background-color: #a55533;
-            transform: translateY(-2px);
-        }
-        
-        .login-prompt-btn {
-            background-color: #7a6b18;
+            background: linear-gradient(135deg, #b23a2e 0%, #8e2f24 100%);
+            box-shadow: 0 4px 15px rgba(178, 58, 46, 0.3);
         }
         
         .login-prompt-btn:hover {
-            background-color: #5f5312;
+            background: linear-gradient(135deg, #8e2f24 0%, #6b241b 100%);
             transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(178, 58, 46, 0.4);
         }
 
-        /* Floating FAQ Button */
+        /* Floating Manual Button */
         #ManualBtn {
             position: fixed;
             bottom: 20px;
@@ -151,6 +157,7 @@
             text-decoration: none;
             transition: background 0.3s;
         }
+        
         #ManualBtn:hover {
             background-color: #a55533;
         }
@@ -166,6 +173,7 @@
             background-color: rgba(0, 0, 0, 0.4);
             z-index: 1000;
         }
+        
         .popup-content {
             background-color: #fffaf4;
             padding: 25px;
@@ -177,12 +185,14 @@
             position: relative;
             animation: fadeIn 0.3s ease-in-out;
         }
+        
         .popup-content h3 {
-            margin-bottom: 0;
+            margin-bottom: 15px;
             color: #b23a2e;
             text-align: center;
             font-size: 22px;
         }
+        
         .close {
             position: absolute;
             top: 12px;
@@ -193,9 +203,11 @@
             cursor: pointer;
             transition: 0.2s;
         }
+        
         .close:hover {
             color: #8e2f24;
         }
+        
         label {
             display: block;
             margin-bottom: 10px;
@@ -203,6 +215,7 @@
             color: #333;
             cursor: pointer;
         }
+        
         button[type="submit"] {
             background-color: #b23a2e;
             color: white;
@@ -216,13 +229,22 @@
             margin-top: 15px;
             transition: all 0.2s ease-in-out;
         }
+        
         button[type="submit"]:hover {
             background-color: #8e2f24;
             transform: scale(1.05);
         }
+        
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.9); }
             to { opacity: 1; transform: scale(1); }
+        }
+
+        .no-recipes {
+            text-align: center;
+            font-size: 18px;
+            color: #666;
+            margin: 50px 0;
         }
     </style>
 </head>
@@ -236,39 +258,56 @@
     <div class="navbar">
         <div class="links">
             <a href="javascript:void(0)" id="filterBtn"><i class="fas fa-filter"></i> Filters</a>
-            <a href="{{ url_for('login_user') }}"><i class="fas fa-user"></i> Login</a>
-            <a href="{{ url_for('register') }}"><i class="fas fa-user-plus"></i> Register</a>
-            <a href="{{ url_for('login') }}"><i class="fas fa-user-shield"></i> Admin Login</a>
+            <a href="#" onclick="showLoginAlert()"><i class="fas fa-user"></i> Login</a>
+            <a href="#" onclick="showRegisterAlert()"><i class="fas fa-user-plus"></i> Register</a>
+            <a href="#" onclick="showAdminAlert()"><i class="fas fa-user-shield"></i> Admin Login</a>
         </div>
     </div>
 
     <!-- FOOD CARDS -->
     <div class="cards">
-        {% if recipes %}
-            {% for recipe in recipes %}
-                <div class="card">
-                    {% if recipe.photo %}
-                        <img src="{{ url_for('static', filename='uploads/' ~ recipe.photo) }}" alt="{{ recipe.name }}">
-                    {% endif %}
-                    <h2>{{ recipe.name }}</h2>
-                    <p><strong>Allergens:</strong> {{ recipe.allergens }}</p>
-                    <p><strong>Rating:</strong> ⭐ {{ recipe.rating }}</p>
-                    
-                    <!-- FIXED: Login check for recipe access -->
-                    {% if session.user %}
-                        <a href="/recipe/{{ recipe.id }}" class="view-recipe-btn">View Full Recipe</a>
-                    {% else %}
-                        <a href="{{ url_for('login_user') }}" class="login-prompt-btn">🔒 Login to view recipe</a>
-                    {% endif %}
-                </div>
-            {% endfor %}
-        {% else %}
-            <p>No recipes available 😢</p>
-        {% endif %}
+        <!-- Sample Recipe 1 -->
+        <div class="card">
+            <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop" alt="Quinoa & Roasted Veggie Salad">
+            <h2>Quinoa & Roasted Veggie Salad</h2>
+            <p><strong>Allergens:</strong> gluten, dairy, nut, egg</p>
+            <div class="rating">
+                <strong>Rating:</strong> <span>⭐ 4.9</span>
+            </div>
+            <a href="javascript:void(0)" onclick="showLoginAlert()" class="login-prompt-btn">
+                <i class="fas fa-lock"></i> Login to view recipe
+            </a>
+        </div>
+
+        <!-- Sample Recipe 2 -->
+        <div class="card">
+            <img src="https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?w=400&h=300&fit=crop" alt="Creamy Pumpkin Soup">
+            <h2>Creamy Pumpkin Soup</h2>
+            <p><strong>Allergens:</strong> gluten, dairy, nut</p>
+            <div class="rating">
+                <strong>Rating:</strong> <span>⭐ 3.6</span>
+            </div>
+            <a href="javascript:void(0)" onclick="showLoginAlert()" class="login-prompt-btn">
+                <i class="fas fa-lock"></i> Login to view recipe
+            </a>
+        </div>
+
+        <!-- Sample Recipe 3 -->
+        <div class="card">
+            <img src="https://images.unsplash.com/photo-1547592180-85f173990554?w=400&h=300&fit=crop" alt="Seaweed soup">
+            <h2>Seaweed soup</h2>
+            <p><strong>Allergens:</strong> gluten, fish</p>
+            <div class="rating">
+                <strong>Rating:</strong> <span>⭐ 5.0</span>
+            </div>
+            <a href="javascript:void(0)" onclick="showLoginAlert()" class="login-prompt-btn">
+                <i class="fas fa-lock"></i> Login to view recipe
+            </a>
+        </div>
     </div>
 
     <!-- FLOATING MANUAL BUTTON -->
-    <a href="{{ url_for('manual') }}" id="ManualBtn" title="Manual">
+    <a href="javascript:void(0)" id="ManualBtn" title="Manual" onclick="showManualAlert()">
         <i class="fas fa-question"></i>
     </a>
 
@@ -277,17 +316,19 @@
         <div class="popup-content">
             <span class="close" id="closePopup">&times;</span>
             <h3>FILTER ALLERGIES</h3>
-            <form method="GET" action="{{ url_for('main') }}">
+            <form onsubmit="applyFilters(event)">
                 <label><input type="checkbox" name="allergy" value="gluten"> Gluten</label>
                 <label><input type="checkbox" name="allergy" value="dairy"> Dairy</label>
                 <label><input type="checkbox" name="allergy" value="nut"> Nuts</label>
                 <label><input type="checkbox" name="allergy" value="egg"> Egg</label>
+                <label><input type="checkbox" name="allergy" value="fish"> Fish</label>
                 <button type="submit">Apply Filter</button>
             </form>
         </div>
     </div>
 
 <script>
+// Filter popup functionality
 const filterBtn = document.getElementById("filterBtn");
 const popup = document.getElementById("filterPopup");
 const closeBtn = document.getElementById("closePopup");
@@ -305,6 +346,38 @@ window.addEventListener("click", (e) => {
         popup.style.display = "none";
     }
 });
+
+// Login alert function
+function showLoginAlert() {
+    alert("Please login to access this feature. In a real application, this would redirect to the login page.");
+}
+
+function showRegisterAlert() {
+    alert("Please register to create an account. In a real application, this would redirect to the registration page.");
+}
+
+function showAdminAlert() {
+    alert("Admin login required. In a real application, this would redirect to the admin login page.");
+}
+
+function showManualAlert() {
+    alert("User manual would open here. This would contain help information about using AllerSafe Recipe.");
+}
+
+// Apply filters function
+function applyFilters(event) {
+    event.preventDefault();
+    const checkedBoxes = document.querySelectorAll('input[name="allergy"]:checked');
+    const selectedAllergies = Array.from(checkedBoxes).map(cb => cb.value);
+    
+    if (selectedAllergies.length === 0) {
+        alert("Please select at least one allergy to filter by.");
+        return;
+    }
+    
+    alert(`Filtering recipes to exclude: ${selectedAllergies.join(', ')}.\n\nIn a real application, this would filter the displayed recipes.`);
+    popup.style.display = "none";
+}
 </script>
 </body>
 </html>
