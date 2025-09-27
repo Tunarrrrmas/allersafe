@@ -142,12 +142,25 @@ def dashboard():
         conn_user.row_factory = sqlite3.Row
         user_count = conn_user.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         active_users = conn_user.execute("SELECT COUNT(*) FROM users WHERE status='active'").fetchone()[0]
-    
+
     # --- Recipes from recipe.db ---
     recipe_count = Recipe.query.count()
 
     # --- Recent audit logs from admin_panel.db ---
     logs = get_audit_logs(limit=5)
+
+    # --- Reports from admin_panel.db ---
+    with sqlite3.connect("admin_panel.db") as conn_admin:
+        conn_admin.row_factory = sqlite3.Row
+        reports = conn_admin.execute("""
+            SELECT rr.id, rr.reason, rr.description, rr.status, rr.created_at,
+                   u.username AS reporter, r.name AS recipe_name
+            FROM recipe_reports rr
+            JOIN users u ON rr.reporter_id = u.id
+            JOIN recipes r ON rr.recipe_id = r.id
+            ORDER BY rr.created_at DESC
+            LIMIT 10
+        """).fetchall()
 
     return render_template(
         'dashboard.html',
@@ -155,8 +168,10 @@ def dashboard():
         user_count=user_count,
         recipe_count=recipe_count,
         active_users=active_users,
-        logs=logs
+        logs=logs,
+        reports=reports   # 🔹 pass reports into template
     )
+
 
 
 # --- Helper function to get DB connection ---
@@ -1368,6 +1383,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
