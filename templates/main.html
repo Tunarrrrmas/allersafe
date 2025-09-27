@@ -98,6 +98,38 @@
             color: #444;
         }
 
+        /* Recipe action buttons */
+        .view-recipe-btn, .login-prompt-btn {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            margin-top: 15px;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .view-recipe-btn {
+            background-color: #c96f4a;
+        }
+        
+        .view-recipe-btn:hover {
+            background-color: #a55533;
+            transform: translateY(-2px);
+        }
+        
+        .login-prompt-btn {
+            background-color: #7a6b18;
+        }
+        
+        .login-prompt-btn:hover {
+            background-color: #5f5312;
+            transform: translateY(-2px);
+        }
+
         /* Floating FAQ Button */
         #ManualBtn {
             position: fixed;
@@ -221,7 +253,13 @@
                     <h2>{{ recipe.name }}</h2>
                     <p><strong>Allergens:</strong> {{ recipe.allergens }}</p>
                     <p><strong>Rating:</strong> ⭐ {{ recipe.rating }}</p>
-                    <a href="/recipe/{{ recipe.id }}">View full recipe</a>
+                    
+                    <!-- FIXED: Login check for recipe access -->
+                    {% if session.user %}
+                        <a href="/recipe/{{ recipe.id }}" class="view-recipe-btn">View Full Recipe</a>
+                    {% else %}
+                        <a href="{{ url_for('login_user') }}" class="login-prompt-btn">🔒 Login to view recipe</a>
+                    {% endif %}
                 </div>
             {% endfor %}
         {% else %}
@@ -233,7 +271,6 @@
     <a href="{{ url_for('manual') }}" id="ManualBtn" title="Manual">
         <i class="fas fa-question"></i>
     </a>
-
 
     <!-- FILTER POPUP -->
     <div id="filterPopup" class="popup" style="display:none;">
@@ -251,16 +288,18 @@
     </div>
 
 <script>
-const ManualBtn = document.getElementById("ManualBtn");
+const filterBtn = document.getElementById("filterBtn");
 const popup = document.getElementById("filterPopup");
 const closeBtn = document.getElementById("closePopup");
 
 filterBtn.addEventListener("click", () => {
-    popup.style.display ="block";
+    popup.style.display = "block";
 });
+
 closeBtn.addEventListener("click", () => {
-    popup.style.display ="none";
+    popup.style.display = "none";
 });
+
 window.addEventListener("click", (e) => {
     if (e.target === popup) {
         popup.style.display = "none";
