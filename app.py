@@ -1330,7 +1330,7 @@ def toggle_guideline(guideline_id):
 @app.route('/suspend-recipe/<int:recipe_id>')
 @login_required
 def suspend_recipe(recipe_id):
-    conn = sqlite3.connect("recipes.db")
+    conn = sqlite3.connect("recipe.db")  # ✅ correct filename
     
     try:
         # First add status column if it doesn't exist
@@ -1340,7 +1340,7 @@ def suspend_recipe(recipe_id):
         except:
             pass  # Column already exists
         
-        # Update recipe status - use 'recipe' not 'recipes'
+        # Update recipe status
         conn.execute("UPDATE recipe SET status = 'suspended' WHERE id = ?", (recipe_id,))
         conn.commit()
         flash("Recipe suspended successfully.", 'warning')
@@ -1437,6 +1437,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
