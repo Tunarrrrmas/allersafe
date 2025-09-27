@@ -1403,18 +1403,32 @@ def toggle_guideline(guideline_id):
 @app.route('/suspend-recipe/<int:recipe_id>')
 @login_required
 def suspend_recipe(recipe_id):
-    """Suspend a recipe"""
-    recipe = get_recipe_by_id(recipe_id)
-    if recipe:
-        recipe_title = recipe.get('title') or recipe.get('name') or 'Unknown'
-        update_recipe_status(recipe_id, 'suspended')
-        add_audit_log(session['admin_id'], 'Recipe Suspended', 'recipe', recipe_id,
-                      f"Suspended recipe: {recipe_title}", request.remote_addr)
-        flash(f"Recipe '{recipe_title}' has been suspended.", 'warning')
-    else:
-        flash('Recipe not found.', 'error')
+    conn = sqlite3.connect("admin_panel.db")
+    conn.row_factory = sqlite3.Row
+    
+    try:
+        # Get recipe details
+        recipe = conn.execute("SELECT * FROM recipes WHERE id = ?", (recipe_id,)).fetchone()
+        
+        if recipe:
+            # Update status to suspended
+            conn.execute("UPDATE recipes SET status = 'suspended' WHERE id = ?", (recipe_id,))
+            conn.commit()
+            
+            # Log the action
+            add_audit_log(session['admin_id'], 'Recipe Suspended', 'recipe', recipe_id,
+                         f"Suspended recipe: {recipe['name']}", request.remote_addr)
+            
+            flash(f"Recipe '{recipe['name']}' has been suspended.", 'warning')
+        else:
+            flash('Recipe not found.', 'error')
+            
+    except Exception as e:
+        flash(f'Error suspending recipe: {str(e)}', 'error')
+    finally:
+        conn.close()
+        
     return redirect(url_for('recipe_management'))
-
 
 @app.route('/activate-recipe/<int:recipe_id>')
 @login_required
@@ -1501,6 +1515,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
