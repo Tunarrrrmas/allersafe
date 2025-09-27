@@ -303,7 +303,7 @@ def add_recipe():
 @user_login_required
 def recipe_details(recipe_id):
     recipe = Recipe.query.get_or_404(recipe_id)
-    return render_template("recipe_details.html", recipe=recipe
+    return render_template("recipe_details.html", recipe=recipe)
                            
 @app.route('/delete-recipe/<int:recipe_id>')
 @login_required
@@ -1392,6 +1392,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
