@@ -1209,46 +1209,104 @@ def recipe_reports():
         return redirect(url_for('dashboard'))
 
 @app.route("/handle-report/<int:report_id>", methods=["POST"])
-@login_required  # Make sure you have this decorator
+@login_required
 def handle_report(report_id):
     """Handle a recipe report (approve / reject / ignore)"""
-
     action = request.form.get("action")   # expected: approved / rejected / ignored
-    notes = request.form.get("notes")     # optional text
-
+    notes = request.form.get("notes", "")     # optional text
+    
     conn = sqlite3.connect("admin_panel.db")
     conn.row_factory = sqlite3.Row
+    
+    try:
+        report = conn.execute(
+            "SELECT * FROM recipe_reports WHERE id = ?",
+            (report_id,)
+        ).fetchone()
+        
+        if not report:
+            flash("Report not found.", "danger")
+            return redirect(url_for("recipe_reports"))  
+        
+        if action not in ["approved", "rejected", "ignored"]:
+            flash("Invalid action.", "danger")
+            return redirect(url_for("recipe_reports"))
+        
+        if action == "approved":
+            # Report is approved - DELETE the recipe
+            recipe_id = report["recipe_id"]
+            recipe = conn.execute(
+                "SELECT * FROM recipes WHERE id = ?",
+                (recipe_id,)
+            ).fetchone()
+            
+            if recipe:
+                if recipe["photo"]:
+                    try:
+                        photo_path = os.path.join("static/uploads", recipe["photo"])
+                        if os.path.exists(photo_path):
+                            os.remove(photo_path)
+                    except Exception as e:
+                        print(f"Error deleting photo: {e}")
 
-    # CORRECTED: Simple select without JOIN since there's no guideline_id
-    report = conn.execute(
-        "SELECT * FROM recipe_reports WHERE id = ?",
-        (report_id,)
-    ).fetchone()
-
-    if not report:
+                conn.execute("DELETE FROM recipes WHERE id = ?", (recipe_id,))
+                conn.execute(
+                    """
+                    UPDATE recipe_reports
+                    SET status = 'resolved', handled_by = ?, action_taken = ?
+                    WHERE id = ?
+                    """,
+                    (session.get("admin_id", session.get("username", "admin")), f"Recipe deleted. Notes: {notes}", report_id)
+                )
+                
+                flash(f"Report approved. Recipe '{recipe['name']}' has been deleted.", "success")
+            else:
+                flash("Recipe not found (may have been already deleted).", "warning")
+                # Still update report status
+                conn.execute(
+                    """
+                    UPDATE recipe_reports
+                    SET status = 'resolved', handled_by = ?, action_taken = ?
+                    WHERE id = ?
+                    """,
+                    (session.get("admin_id", session.get("username", "admin")), f"Recipe not found. Notes: {notes}", report_id)
+                )
+        
+        elif action == "rejected":
+            # Report is rejected - keep recipe, mark report as resolved
+            conn.execute(
+                """
+                UPDATE recipe_reports
+                SET status = 'resolved', handled_by = ?, action_taken = ?
+                WHERE id = ?
+                """,
+                (session.get("admin_id", session.get("username", "admin")), f"Report rejected. Notes: {notes}", report_id)
+            )
+            flash("Report rejected. Recipe will remain published.", "info")
+        
+        elif action == "ignored":
+            # Report is ignored - no action on recipe, mark as resolved
+            conn.execute(
+                """
+                UPDATE recipe_reports
+                SET status = 'resolved', handled_by = ?, action_taken = ?
+                WHERE id = ?
+                """,
+                (session.get("admin_id", session.get("username", "admin")), f"Report ignored. Notes: {notes}", report_id)
+            )
+            flash("Report ignored.", "warning")
+        
+        conn.commit()
+        
+    except Exception as e:
+        conn.rollback()
+        flash(f"Error handling report: {str(e)}", "danger")
+        print(f"Error in handle_report: {e}")
+    
+    finally:
         conn.close()
-        flash("Report not found.", "danger")
-        return redirect(url_for("recipe_reports"))  # Fixed redirect target
-
-    if action not in ["approved", "rejected", "ignored"]:
-        conn.close()
-        flash("Invalid action.", "danger")
-        return redirect(url_for("recipe_reports"))  # Fixed redirect target
-
-    # Update report status
-    conn.execute(
-        """
-        UPDATE recipe_reports
-        SET status = ?, handled_by = ?, action_taken = ?
-        WHERE id = ?
-        """,
-        (action, session["admin_id"], notes, report_id)
-    )
-    conn.commit()
-    conn.close()
-
-    flash("Report updated successfully.", "success")
-    return redirect(url_for("recipe_reports"))  
+    
+    return redirect(url_for("recipe_reports"))
 # ---------------------- GUIDELINES ----------------------
 @app.route('/guideline-management')
 @login_required
@@ -1443,6 +1501,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
