@@ -1043,41 +1043,68 @@ def report_recipe(recipe_id):
 
         return errors, int(guideline_id) if guideline_id and guideline_id.isdigit() else None, description
 
-def submit_report(recipe_id, user_id, guideline_id, description):
-    try:
-        conn = sqlite3.connect('admin_panel.db')
-        
-        # Use 'title' instead of 'text' column
-        guideline = conn.execute(
-            "SELECT title FROM guidelines WHERE id = ?", (guideline_id,)
-        ).fetchone()
-        reason_text = guideline['title'] if guideline else f"Guideline ID: {guideline_id}"
-
-        conn.execute('''
-            INSERT INTO recipe_reports (recipe_id, reporter_id, reason, description, created_at)
-            VALUES (?, ?, ?, ?, datetime('now'))
-        ''', (recipe_id, user_id, reason_text, description))
-        conn.commit()
-        conn.close()
-        
-        # Add audit log
+    # --- Submit report function (MOVED OUTSIDE) ---
+    def submit_report(recipe_id, user_id, guideline_id, description):
         try:
-            add_audit_log(
-                admin_id=None,
-                user_id=user_id,
-                action="recipe_reported",
-                target_type="recipe",
-                target_id=recipe_id,
-                details=f"Recipe reported for: {reason_text}"
-            )
-        except Exception as audit_error:
-            app.logger.error(f"Error adding audit log: {audit_error}")
-        
-        return True
-    except sqlite3.Error as e:  # ← THIS EXCEPT BLOCK WAS MISSING!
-        app.logger.error(f"Database error submitting report: {e}")
-        flash("Error submitting report. Please try again.", "danger")
-        return False
+            conn = sqlite3.connect('admin_panel.db')
+            
+            # Use 'title' instead of 'text' column
+            guideline = conn.execute(
+                "SELECT title FROM guidelines WHERE id = ?", (guideline_id,)
+            ).fetchone()
+            reason_text = guideline['title'] if guideline else f"Guideline ID: {guideline_id}"
+
+            conn.execute('''
+                INSERT INTO recipe_reports (recipe_id, reporter_id, reason, description, created_at)
+                VALUES (?, ?, ?, ?, datetime('now'))
+            ''', (recipe_id, user_id, reason_text, description))
+            conn.commit()
+            conn.close()
+            
+            # Add audit log
+            try:
+                add_audit_log(
+                    admin_id=None,
+                    user_id=user_id,
+                    action="recipe_reported",
+                    target_type="recipe",
+                    target_id=recipe_id,
+                    details=f"Recipe reported for: {reason_text}"
+                )
+            except Exception as audit_error:
+                app.logger.error(f"Error adding audit log: {audit_error}")
+            
+            return True
+        except sqlite3.Error as e:
+            app.logger.error(f"Database error submitting report: {e}")
+            flash("Error submitting report. Please try again.", "danger")
+            return False
+
+    # --- Main flow ---
+    recipe = Recipe.query.get_or_404(recipe_id)  # Use SQLAlchemy to get recipe
+    if not recipe:
+        flash('Recipe not found.', 'danger')
+        return redirect(url_for('home'))
+
+    guidelines = get_active_guidelines()
+
+    if request.method == 'POST':
+        errors, validated_guideline_id, validated_description = validate_report_form(request.form)
+
+        if errors:
+            for error in errors:
+                flash(error, "danger")
+        else:
+            user_id = get_user_id_from_session()
+            if not user_id:
+                flash("You must be logged in to report a recipe.", "danger")
+                return redirect(url_for("login_user"))
+
+            if submit_report(recipe_id, user_id, validated_guideline_id, validated_description):
+                flash('Recipe reported successfully. Thank you for helping keep our community safe.', 'success')
+                return redirect(url_for('recipe_details', recipe_id=recipe_id))
+
+    return render_template('report_recipe.html', recipe=recipe, guidelines=guidelines)
         
     # --- Main flow ---
     recipe = get_recipe_by_id(recipe_id)  # must point to the same DB as your recipes
@@ -1388,6 +1415,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
