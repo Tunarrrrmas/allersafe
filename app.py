@@ -1129,71 +1129,50 @@ def recipe_reports():
         flash(f'Error loading reports: {e}', 'danger')
         return redirect(url_for('dashboard'))
 
-
-
-@app.route('/handle-report/<int:report_id>', methods=['POST'])
-@login_required
+@app.route("/handle-report/<int:report_id>", methods=["POST"])
 def handle_report(report_id):
-    """Admin handles a recipe report with guideline awareness"""
-    action = request.form.get('action')  # 'dismiss', 'remove_recipe', 'warn_user'
-    admin_notes = request.form.get('admin_notes', '')
+    """Handle a recipe report (approve / reject / ignore)"""
 
-    conn = sqlite3.connect(DB_NAME)
+    if "admin_id" not in session:
+        flash("You must be logged in as admin.", "danger")
+        return redirect(url_for("login_admin"))
+
+    action = request.form.get("action")   # expected: approved / rejected / ignored
+    notes = request.form.get("notes")     # optional text
+
+    conn = sqlite3.connect("admin_panel.db")
     conn.row_factory = sqlite3.Row
 
-    # Get report details with guideline info
-    report = conn.execute('''
-        SELECT r.*, g.title as guideline_title, g.severity as guideline_severity
-        FROM recipe_reports r
-        LEFT JOIN guidelines g ON r.guideline_id = g.id
-        WHERE r.id = ?
-    ''', (report_id,)).fetchone()
+    # Fetch the report (no guideline join, reason is stored as TEXT)
+    report = conn.execute(
+        "SELECT * FROM recipe_reports WHERE id = ?",
+        (report_id,)
+    ).fetchone()
 
     if not report:
         conn.close()
-        flash('Report not found.', 'danger')
-        return redirect(url_for('recipe_reports'))
+        flash("Report not found.", "danger")
+        return redirect(url_for("view_reports"))
+
+    if action not in ["approved", "rejected", "ignored"]:
+        conn.close()
+        flash("Invalid action.", "danger")
+        return redirect(url_for("view_reports"))
 
     # Update report status
-    conn.execute('''
+    conn.execute(
+        """
         UPDATE recipe_reports
-        SET status = 'handled', handled_by = ?, action_taken = ?
+        SET status = ?, handled_by = ?, action_taken = ?
         WHERE id = ?
-    ''', (session['admin_id'], action, report_id))
+        """,
+        (action, session["admin_id"], notes, report_id)
+    )
     conn.commit()
-
-    # Handle recipe suspension automatically for critical guideline
-    if report['guideline_severity'] == 'critical' or action == 'remove_recipe':
-        recipe_id = report['recipe_id']
-        recipe = get_recipe_by_id(recipe_id)
-        if recipe and recipe['status'] != 'suspended':
-            update_recipe_status(recipe_id, 'suspended')
-
-    # Optional: warn user if chosen
-    if action == 'warn_user' and report['reporter_id']:
-        add_user_warning(
-            user_id=report['reporter_id'],
-            admin_id=session['admin_id'],
-            guideline_id=report['guideline_id'],
-            custom_reason=f"Admin noted: {admin_notes}" if admin_notes else None,
-            severity=report['guideline_severity'] or 'warning'
-        )
-
     conn.close()
 
-    # Add audit log entry
-    guideline_info = f"Guideline: {report['guideline_title']}" if report['guideline_title'] else "No guideline"
-    add_audit_log(
-        admin_id=session['admin_id'],
-        action='Recipe Report Handled',
-        target_type='report',
-        target_id=report_id,
-        details=f"Handled report with action: {action}. {guideline_info}. Notes: {admin_notes}",
-        ip_address=request.remote_addr
-    )
-
-    flash(f'Report handled successfully with action: {action}', 'success')
-    return redirect(url_for('recipe_reports'))
+    flash("Report updated successfully.", "success")
+    return redirect(url_for("view_reports"))
 
 # ---------------------- GUIDELINES ----------------------
 @app.route('/guideline-management')
@@ -1389,5 +1368,6 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
