@@ -1050,7 +1050,7 @@ def report_recipe(recipe_id):
         
         # FIXED: Use 'title' instead of 'text' column
             guideline = conn.execute(
-            "SELECT title FROM guidelines WHERE id = ?", (guideline_id,)
+                "SELECT title FROM guidelines WHERE id = ?", (guideline_id,)
             ).fetchone()
             reason_text = guideline['title'] if guideline else f"Guideline ID: {guideline_id}"
 
@@ -1389,6 +1389,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
