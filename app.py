@@ -1023,68 +1023,26 @@ def delete_warning_route(warning_id):
 
 
 # ---------------------- RECIPE REPORTS ----------------------
-@app.route('/report-recipe/<int:recipe_id>', methods=['GET', 'POST'])
-def report_recipe(recipe_id):
-    """Allow users to report recipes safely"""
-
-    # --- Get current user ID from session ---
-    def get_user_id_from_session():
-        if 'user' not in session:
-            return None
-        try:
-            conn = sqlite3.connect("user.db")
-            conn.row_factory = sqlite3.Row
-            user = conn.execute(
-                "SELECT id FROM users WHERE username = ?", 
-                (session['user'],)
-            ).fetchone()
-            return user['id'] if user else None
-        except sqlite3.Error as e:
-            app.logger.error(f"Database error fetching user: {e}")
-            return None
-        finally:
-            conn.close()
-
-    # --- Fetch active guidelines ---
-    def get_active_guidelines():
-        try:
-            all_guidelines = get_all_guidelines()  # from admin_panel.db
-            return [g for g in all_guidelines if g.get('is_active', 1) == 1]
-        except Exception as e:
-            app.logger.error(f"Error fetching guidelines: {e}")
-            flash("Error loading reporting guidelines.", "danger")
-            return []
-
-    # --- Validate submitted form ---
-    def validate_report_form(form_data):
-        errors = []
-        guideline_id = form_data.get('guideline_id')
-        if not guideline_id or not guideline_id.isdigit():
-            errors.append("Please select a valid reporting reason.")
-
-        description = form_data.get('description', '').strip()
-        if len(description) > 1000:
-            errors.append("Description must be less than 1000 characters.")
-
-        return errors, int(guideline_id) if guideline_id and guideline_id.isdigit() else None, description
-
-    # --- Submit report function (MOVED OUTSIDE) ---
+# Move this function OUTSIDE of any route - put it with your other helper functions
 def submit_report(recipe_id, user_id, guideline_id, description):
+    """Submit a recipe report - FIXED VERSION"""
     try:
         conn = sqlite3.connect('admin_panel.db')
-        conn.row_factory = sqlite3.Row  # This makes it return dict-like objects
+        conn.row_factory = sqlite3.Row  # This is crucial for dict-like access
         
-        # Use 'title' instead of 'text' column
+        # Get guideline title
         guideline = conn.execute(
             "SELECT title FROM guidelines WHERE id = ?", (guideline_id,)
         ).fetchone()
         
         reason_text = guideline['title'] if guideline else f"Guideline ID: {guideline_id}"
 
+        # Insert the report
         conn.execute('''
             INSERT INTO recipe_reports (recipe_id, reporter_id, reason, description, created_at)
             VALUES (?, ?, ?, ?, datetime('now'))
         ''', (recipe_id, user_id, reason_text, description))
+        
         conn.commit()
         conn.close()
         
@@ -1099,13 +1057,87 @@ def submit_report(recipe_id, user_id, guideline_id, description):
                 details=f"Recipe reported for: {reason_text}"
             )
         except Exception as audit_error:
-            app.logger.error(f"Error adding audit log: {audit_error}")
+            print(f"Error adding audit log: {audit_error}")
         
         return True
+        
     except sqlite3.Error as e:
-        app.logger.error(f"Database error submitting report: {e}")
-        flash("Error submitting report. Please try again.", "danger")
+        print(f"Database error submitting report: {e}")
         return False
+    except Exception as e:
+        print(f"General error submitting report: {e}")
+        return False
+
+@app.route('/report-recipe/<int:recipe_id>', methods=['GET', 'POST'])
+def report_recipe(recipe_id):
+    """Allow users to report recipes safely - SIMPLIFIED VERSION"""
+    
+    recipe = Recipe.query.get_or_404(recipe_id)
+    if not recipe:
+        flash('Recipe not found.', 'danger')
+        return redirect(url_for('main'))
+
+    if request.method == 'GET':
+        # Get active guidelines for the form
+        try:
+            conn = sqlite3.connect('admin_panel.db')
+            conn.row_factory = sqlite3.Row
+            guidelines = conn.execute(
+                "SELECT id, title FROM guidelines WHERE is_active = 1"
+            ).fetchall()
+            conn.close()
+            
+            # Convert to list of dicts for template
+            guidelines_list = [dict(g) for g in guidelines]
+            
+        except Exception as e:
+            print(f"Error fetching guidelines: {e}")
+            guidelines_list = []
+            flash("Error loading reporting guidelines.", "danger")
+
+        return render_template('report_recipe.html', recipe=recipe, guidelines=guidelines_list)
+
+    # POST request - handle form submission
+    if request.method == 'POST':
+        # Get current user ID
+        user_id = None
+        if 'user' in session:
+            try:
+                conn = sqlite3.connect("user.db")
+                conn.row_factory = sqlite3.Row
+                user = conn.execute(
+                    "SELECT id FROM users WHERE username = ?", 
+                    (session['user'],)
+                ).fetchone()
+                user_id = user['id'] if user else None
+                conn.close()
+            except Exception as e:
+                print(f"Error getting user ID: {e}")
+
+        if not user_id:
+            flash("You must be logged in to report a recipe.", "danger")
+            return redirect(url_for("login_user"))
+
+        # Validate form data
+        guideline_id = request.form.get('guideline_id')
+        description = request.form.get('description', '').strip()
+
+        if not guideline_id or not guideline_id.isdigit():
+            flash("Please select a valid reporting reason.", "danger")
+            return redirect(url_for('report_recipe', recipe_id=recipe_id))
+
+        if len(description) > 1000:
+            flash("Description must be less than 1000 characters.", "danger")
+            return redirect(url_for('report_recipe', recipe_id=recipe_id))
+
+        # Submit the report
+        if submit_report(recipe_id, user_id, int(guideline_id), description):
+            flash('Recipe reported successfully. Thank you for helping keep our community safe.', 'success')
+            return redirect(url_for('recipe_details', recipe_id=recipe_id))
+        else:
+            flash('Error submitting report. Please try again.', 'danger')
+            return redirect(url_for('report_recipe', recipe_id=recipe_id))
+
     # --- Main flow ---
     recipe = Recipe.query.get_or_404(recipe_id)  # Use SQLAlchemy to get recipe
     if not recipe:
@@ -1411,6 +1443,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
