@@ -133,7 +133,11 @@
 
     <!-- Back Button Section -->
     <section class="back-section">
-      <a href="{{ url_for('main') }}" class="back-btn">⬅ Back to Main</a>
+      {% if session.user %}
+          <a href="{{ url_for('user_main') }}" class="back-btn">⬅ Back to Dashboard</a>
+      {% else %}
+        <a href="{{ url_for('main') }}" class="back-btn">⬅ Back to Main</a>
+      {% endif %}
     </section>
   </main>
 
@@ -143,4 +147,5 @@
 
 </body>
 </html>
+
 
