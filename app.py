@@ -999,7 +999,6 @@ def delete_warning_route(warning_id):
 
 
 # ---------------------- RECIPE REPORTS ----------------------
-# Move this function OUTSIDE of any route - put it with your other helper functions
 def submit_report(recipe_id, user_id, guideline_id, description):
     """Submit a recipe report - FIXED VERSION"""
     try:
@@ -1140,13 +1139,65 @@ def report_recipe(recipe_id):
 
     return render_template('report_recipe.html', recipe=recipe, guidelines=guidelines)
         
-@app.route('/recipe-reports')  
+@app.route('/recipe-reports', methods=['GET', 'POST'])  # Add POST method
+@login_required
 def recipe_reports():
-    """View all recipe reports"""
-    try:
-        reports = get_all_recipe_reports() # Fetch reports from admin_panel.db
+    """View all recipe reports and handle report actions"""
+    
+    # Handle POST requests (report actions)
+    if request.method == 'POST':
+        report_id = request.form.get('report_id')
+        action = request.form.get('action')
+        notes = request.form.get('notes', '')
         
-        # Enhance the reports with additional info
+        if not report_id or not action:
+            flash('Missing report ID or action', 'danger')
+            return redirect(url_for('recipe_reports'))
+        
+        admin_conn = sqlite3.connect("admin_panel.db")
+        recipe_conn = sqlite3.connect("recipes.db")
+        admin_conn.row_factory = sqlite3.Row
+        recipe_conn.row_factory = sqlite3.Row
+        
+        try:
+            # Get report from admin database
+            report = admin_conn.execute("SELECT * FROM recipe_reports WHERE id = ?", (report_id,)).fetchone()
+            
+            if not report:
+                flash('Report not found', 'danger')
+                return redirect(url_for('recipe_reports'))
+            
+            if action == "approved":
+                # Delete from 'recipe' table
+                recipe_conn.execute("DELETE FROM recipe WHERE id = ?", (report["recipe_id"],))
+                recipe_conn.commit()
+                flash('Report approved. Recipe has been deleted.', 'success')
+                
+            elif action == "rejected":
+                flash('Report dismissed. Recipe will remain published.', 'info')
+                
+            elif action == "ignored":
+                flash('Report ignored.', 'warning')
+            
+            # Update report status
+            admin_conn.execute(
+                "UPDATE recipe_reports SET status = 'resolved', handled_by = ?, action_taken = ? WHERE id = ?",
+                (session.get("admin_id", "admin"), f"{action}. Notes: {notes}", report_id)
+            )
+            admin_conn.commit()
+            
+        except Exception as e:
+            flash(f'Error handling report: {str(e)}', 'danger')
+        finally:
+            admin_conn.close()
+            recipe_conn.close()
+        
+        return redirect(url_for('recipe_reports'))
+    
+    # Handle GET requests (show reports)
+    try:
+        reports = get_all_recipe_reports()
+        
         enhanced_reports = []
         for report in reports:
             # Get recipe name
@@ -1156,7 +1207,7 @@ def recipe_reports():
             except:
                 report['recipe_name'] = f"Recipe #{report['recipe_id']}"
             
-            # Get reporter username if available
+            # Get reporter username
             if report['reporter_id']:
                 try:
                     user = get_user_by_id(report['reporter_id'])
@@ -1183,33 +1234,6 @@ def recipe_reports():
     except Exception as e:
         flash(f'Error loading reports: {e}', 'danger')
         return redirect(url_for('dashboard'))
-
-def handle_report(report_id):
-    action = request.form.get("action")
-    notes = request.form.get("notes", "")
-    
-    admin_conn = sqlite3.connect("admin_panel.db")  # For reports
-    recipe_conn = sqlite3.connect("recipes.db")     # For recipes
-    
-    try:
-        # Get report from admin database
-        report = admin_conn.execute("SELECT * FROM recipe_reports WHERE id = ?", (report_id,)).fetchone()
-        
-        if action == "approved":
-            # Delete from 'recipe' table (singular)
-            recipe_conn.execute("DELETE FROM recipe WHERE id = ?", (report["recipe_id"],))
-            recipe_conn.commit()
-            
-        # Update report status
-        admin_conn.execute(
-            "UPDATE recipe_reports SET status = 'resolved', handled_by = ?, action_taken = ? WHERE id = ?",
-            (session.get("admin_id", "admin"), f"{action}. Notes: {notes}", report_id)
-        )
-        admin_conn.commit()
-        
-    finally:
-        admin_conn.close()
-        recipe_conn.close()
 # ---------------------- GUIDELINES ----------------------
 @app.route('/guideline-management')
 @login_required
@@ -1413,6 +1437,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
