@@ -1045,21 +1045,21 @@ def report_recipe(recipe_id):
 
     # --- Submit report into recipe_reports table ---
     def submit_report(recipe_id, user_id, guideline_id, description):
-    try:
-        conn = sqlite3.connect('admin_panel.db')
+        try:
+            conn = sqlite3.connect('admin_panel.db')
         
         # FIXED: Use 'title' instead of 'text' column
-        guideline = conn.execute(
+            guideline = conn.execute(
             "SELECT title FROM guidelines WHERE id = ?", (guideline_id,)
-        ).fetchone()
-        reason_text = guideline['title'] if guideline else f"Guideline ID: {guideline_id}"
+            ).fetchone()
+            reason_text = guideline['title'] if guideline else f"Guideline ID: {guideline_id}"
 
-        conn.execute('''
-            INSERT INTO recipe_reports (recipe_id, reporter_id, reason, description, created_at)
-            VALUES (?, ?, ?, ?, datetime('now'))
-        ''', (recipe_id, user_id, reason_text, description))
-        conn.commit()
-        conn.close()
+            conn.execute('''
+                INSERT INTO recipe_reports (recipe_id, reporter_id, reason, description, created_at)
+                VALUES (?, ?, ?, ?, datetime('now'))
+            ''', (recipe_id, user_id, reason_text, description))
+            conn.commit()
+            conn.close()
         
         # Add audit log
         try:
@@ -1389,6 +1389,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
