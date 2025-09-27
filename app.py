@@ -1045,40 +1045,41 @@ def report_recipe(recipe_id):
 
     # --- Submit report into recipe_reports table ---
     def submit_report(recipe_id, user_id, guideline_id, description):
+    try:
+        conn = sqlite3.connect('admin_panel.db')
+        
+        # FIXED: Use 'title' instead of 'text' column
+        guideline = conn.execute(
+            "SELECT title FROM guidelines WHERE id = ?", (guideline_id,)
+        ).fetchone()
+        reason_text = guideline['title'] if guideline else f"Guideline ID: {guideline_id}"
+
+        conn.execute('''
+            INSERT INTO recipe_reports (recipe_id, reporter_id, reason, description, created_at)
+            VALUES (?, ?, ?, ?, datetime('now'))
+        ''', (recipe_id, user_id, reason_text, description))
+        conn.commit()
+        conn.close()
+        
+        # Add audit log
         try:
-            conn = sqlite3.connect('admin_panel.db')
-            # Fetch guideline text for better clarity
-            guideline = conn.execute(
-                "SELECT text FROM guidelines WHERE id = ?", (guideline_id,)
-            ).fetchone()
-            reason_text = guideline['text'] if guideline else f"Guideline ID: {guideline_id}"
-
-            conn.execute('''
-                INSERT INTO recipe_reports (recipe_id, reporter_id, reason, description, created_at)
-                VALUES (?, ?, ?, ?, datetime('now'))
-            ''', (recipe_id, user_id, reason_text, description))
-            conn.commit()
-            conn.close()
-
-            # Audit log (optional)
-            try:
-                add_audit_log(
-                    admin_id=None,
-                    user_id=user_id,
-                    action="recipe_reported",
-                    target_type="recipe",
-                    target_id=recipe_id,
-                    details=f"Recipe reported for guideline violation (ID: {guideline_id})"
-                )
-            except Exception as audit_error:
-                app.logger.error(f"Error adding audit log: {audit_error}")
-
-            return True
-        except sqlite3.Error as e:
-            app.logger.error(f"Database error submitting report: {e}")
-            flash("Error submitting report. Please try again.", "danger")
-            return False
-
+            add_audit_log(
+                admin_id=None,
+                user_id=user_id,
+                action="recipe_reported",
+                target_type="recipe",
+                target_id=recipe_id,
+                details=f"Recipe reported for: {reason_text}"
+            )
+        except Exception as audit_error:
+            app.logger.error(f"Error adding audit log: {audit_error}")
+        
+        return True
+    except sqlite3.Error as e:
+        app.logger.error(f"Database error submitting report: {e}")
+        flash("Error submitting report. Please try again.", "danger")
+        return False
+        
     # --- Main flow ---
     recipe = get_recipe_by_id(recipe_id)  # must point to the same DB as your recipes
     if not recipe:
@@ -1388,6 +1389,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
