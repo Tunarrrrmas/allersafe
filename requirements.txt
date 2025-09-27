@@ -1,6 +1,7 @@
 # Core Flask Framework
 Flask==2.3.3
 flask_sqlalchemy
+pillow
 
 # WSGI Server for Production
 waitress==2.1.2
@@ -10,4 +11,5 @@ Flask-Mail==0.9.1
 
 # Environment Variables
 python-dotenv==1.0.0
+
 
