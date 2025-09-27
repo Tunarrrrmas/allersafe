@@ -143,8 +143,8 @@
             background-color: #4e100a;
         }
 
-        /* Floating FAQ Button */
-        #faqBtn {
+        /* Floating Manual Button */
+        #manualBtn {
             position: fixed;
             bottom: 20px;
             right: 20px;
@@ -163,7 +163,7 @@
             transition: background 0.3s;
         }
 
-        #faqBtn:hover {
+        #manualBtn:hover {
             background-color: #a55533;
         }
     </style>
@@ -218,8 +218,8 @@
         <button class="add-btn">➕ Add Recipe</button>
     </a>
 
-    <!-- FLOATING FAQ BUTTON -->
-    <a href="#" id="faqBtn" title="FAQ">
+    <!-- FLOATING MANUAL BUTTON -->
+    <a href="{{ url_for('manual') }}" id="manualBtn" title="Manual">
         <i class="fas fa-question"></i>
     </a>
 
