@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Recipe Reports{% endblock %}
+{% block page_title %}Recipe Reports{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Recipe Reports</span>
+        <span class="badge bg-primary">{{ reports|length }} reports</span>
+    </div>
+
+    <div class="card-body p-0">
+        {% if reports %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Recipe</th>
+                        <th>Reporter</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in reports %}
+                    <tr>
+                        <td>{{ report.reporter_name or 'Unknown' }}</td>
+                        <td>{{ report.guideline_title or report.reason }}</td>
+                        <td>{{ report.description or 'N/A' }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if report.status == 'handled' else 'warning' }}">
+                                {{ report.status.title() }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if report.status == 'pending' %}
+                            <div class="btn-group">
+                                <form method="POST" action="{{ url_for('handle_report', report_id=report.id) }}" style="display: inline;">
+                                    <input type="hidden" name="action" value="dismiss">
+                                    <button type="submit" class="btn btn-sm btn-success">Dismiss</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('handle_report', report_id=report.id) }}" style="display: inline;">
+                                    <input type="hidden" name="action" value="remove_recipe">
+                                    <button type="submit" class="btn btn-sm btn-danger">Remove Recipe</button>
+                                </form>
+                            </div>
+                            {% else %}
+                            <span class="text-muted">{{ report.action_taken or 'Handled' }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-4 text-center">
+            <i class="fas fa-flag fa-3x text-muted mb-3"></i>
+            <h5>No Recipe Reports</h5>
+            <p class="text-muted">No reports have been submitted yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

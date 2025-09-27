@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Recipe{% endblock %}
+{% block page_title %}Submit New Recipe{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <!-- Back Button -->
+            <div class="mb-4">
+                <a href="{{ url_for('user_submit_recipe') }}">Submit Recipe</a>
+                    <i class="fas fa-arrow-left me-2"></i>Back to Recipes
+                </a>
+            </div>
+
+            <!-- Header -->
+            <div class="card border-0 shadow-lg mb-4">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #D2691E, #FF8C42);">
+                    <h3 class="mb-0">
+                        <i class="fas fa-utensils me-2"></i>Submit Your Recipe
+                    </h3>
+                    <p class="mb-0 mt-2 opacity-75">Share your allergy-friendly recipe with the community!</p>
+                </div>
+                
+                <div class="card-body p-4">
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Note:</strong> Your recipe will be reviewed by our admin team before being published to ensure it meets our safety standards.
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data" id="recipeForm">
+                        <!-- Recipe Name -->
+                        <div class="mb-4">
+                            <label for="name" class="form-label fw-bold">
+                                <i class="fas fa-signature text-primary me-2"></i>Recipe Name *
+                            </label>
+                            <input type="text" class="form-control form-control-lg" id="name" name="name" 
+                                   placeholder="Enter your recipe name" required maxlength="100">
+                            <div class="form-text">Give your recipe an appetizing name that describes the dish.</div>
+                        </div>
+
+                        <!-- Recipe Photo -->
+                        <div class="mb-4">
+                            <label for="photo" class="form-label fw-bold">
+                                <i class="fas fa-camera text-success me-2"></i>Recipe Photo
+                            </label>
+                            <input type="file" class="form-control" id="photo" name="photo" 
+                                   accept="image/png,image/jpeg,image/jpg,image/gif">
+                            <div class="form-text">Upload an appetizing photo of your finished dish (optional but recommended).</div>
+                            
+                            <!-- Image Preview -->
+                            <div id="imagePreview" class="mt-3" style="display: none;">
+                                <img id="previewImg" src="" alt="Preview" class="img-fluid rounded" style="max-height: 200px;">
+                            </div>
+                        </div>
+
+                        <!-- Ingredients -->
+                        <div class="mb-4">
+                            <label for="ingredients" class="form-label fw-bold">
+                                <i class="fas fa-list-ul text-warning me-2"></i>Ingredients *
+                            </label>
+                            <textarea class="form-control" id="ingredients" name="ingredients" rows="6" 
+                                      placeholder="List each ingredient on a new line. Format: Ingredient name - measurement&#10;Example:&#10;Flour - 2 cups&#10;Sugar - 1/2 cup&#10;Eggs - 3 large" required></textarea>
+                            <div class="form-text">
+                                List one ingredient per line. Use format: <strong>Ingredient - Measurement</strong>
+                            </div>
+                        </div>
+
+                        <!-- Instructions -->
+                        <div class="mb-4">
+                            <label for="instruction" class="form-label fw-bold">
+                                <i class="fas fa-clipboard-list text-info me-2"></i>Cooking Instructions *
+                            </label>
+                            <textarea class="form-control" id="instruction" name="instruction" rows="8" 
+                                      placeholder="Provide step-by-step instructions for preparing your recipe...&#10;&#10;1. Preheat oven to 350°F...&#10;2. Mix dry ingredients in a large bowl...&#10;3. In another bowl, whisk together..." required></textarea>
+                            <div class="form-text">Provide clear, step-by-step instructions. Number your steps for clarity.</div>
+                        </div>
+
+                        <!-- Allergens -->
+                        <div class="mb-4">
+                            <label for="allergens" class="form-label fw-bold">
+                                <i class="fas fa-exclamation-triangle text-danger me-2"></i>Contains Allergens *
+                            </label>
+                            
+                            <!-- Common Allergens Checkboxes -->
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="milk" id="allergen-milk">
+                                        <label class="form-check-label" for="allergen-milk">🥛 Milk/Dairy</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="eggs" id="allergen-eggs">
+                                        <label class="form-check-label" for="allergen-eggs">🥚 Eggs</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="peanuts" id="allergen-peanuts">
+                                        <label class="form-check-label" for="allergen-peanuts">🥜 Peanuts</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="tree nuts" id="allergen-nuts">
+                                        <label class="form-check-label" for="allergen-nuts">🌰 Tree Nuts</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="fish" id="allergen-fish">
+                                        <label class="form-check-label" for="allergen-fish">🐟 Fish</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="shellfish" id="allergen-shellfish">
+                                        <label class="form-check-label" for="allergen-shellfish">🦐 Shellfish</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="wheat" id="allergen-wheat">
+                                        <label class="form-check-label" for="allergen-wheat">🌾 Wheat/Gluten</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="soy" id="allergen-soy">
+                                        <label class="form-check-label" for="allergen-soy">🌱 Soy</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Manual Allergen Input -->
+                            <textarea class="form-control" id="allergens" name="allergens" rows="2" 
+                                      placeholder="List any allergens present in this recipe (will be auto-filled based on checkboxes above, or add custom ones)" required></textarea>
+                            <div class="form-text">
+                                <strong>Important:</strong> Please accurately list all allergens to keep our community safe. 
+                                Common allergens are listed above for your convenience.
+                            </div>
+                        </div>
+
+                        <!-- Cooking Time (Optional) -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="prep_time" class="form-label fw-bold">
+                                    <i class="fas fa-clock text-secondary me-2"></i>Prep Time (minutes)
+                                </label>
+                                <input type="number" class="form-control" id="prep_time" name="prep_time" 
+                                       placeholder="e.g., 15" min="0" max="1440">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="cook_time" class="form-label fw-bold">
+                                    <i class="fas fa-fire text-secondary me-2"></i>Cook Time (minutes)
+                                </label>
+                                <input type="number" class="form-control" id="cook_time" name="cook_time" 
+                                       placeholder="e.g., 30" min="0" max="1440">
+                            </div>
+                        </div>
+
+                        <!-- Servings -->
+                        <div class="mb-4">
+                            <label for="servings" class="form-label fw-bold">
+                                <i class="fas fa-users text-secondary me-2"></i>Number of Servings
+                            </label>
+                            <input type="number" class="form-control" id="servings" name="servings" 
+                                   placeholder="e.g., 4" min="1" max="50">
+                        </div>
+
+                        <!-- Difficulty Level -->
+                        <div class="mb-4">
+                            <label for="difficulty" class="form-label fw-bold">
+                                <i class="fas fa-chart-line text-secondary me-2"></i>Difficulty Level
+                            </label>
+                            <select class="form-select" id="difficulty" name="difficulty">
+                                <option value="">Select difficulty...</option>
+                                <option value="easy">🟢 Easy - Perfect for beginners</option>
+                                <option value="medium">🟡 Medium - Some cooking experience helpful</option>
+                                <option value="hard">🔴 Hard - Advanced cooking skills required</option>
+                            </select>
+                        </div>
+
+                        <!-- Additional Notes -->
+                        <div class="mb-4">
+                            <label for="notes" class="form-label fw-bold">
+                                <i class="fas fa-sticky-note text-secondary me-2"></i>Additional Notes
+                            </label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Any special tips, substitutions, or additional information about your recipe..."></textarea>
+                        </div>
+
+                        <!-- Terms Agreement -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="terms" required>
+                                <label class="form-check-label" for="terms">
+                                    I confirm that this recipe is safe for people with the allergens I have NOT listed, and I take responsibility for the accuracy of the allergen information provided. *
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('user_main') }}" class="btn btn-outline-secondary btn-lg me-md-2">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <i class="fas fa-paper-plane me-2"></i>Submit for Review
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Image preview functionality
+document.getElementById('photo').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('previewImg').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        document.getElementById('imagePreview').style.display = 'none';
+    }
+});
+
+// Auto-fill allergens based on checkboxes
+function updateAllergens() {
+    const checkboxes = document.querySelectorAll('input[type="checkbox"][value]');
+    const allergenField = document.getElementById('allergens');
+    const currentValue = allergenField.value;
+    
+    let selectedAllergens = [];
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked && checkbox.value) {
+            selectedAllergens.push(checkbox.value);
+        }
+    });
+    
+    // If there are custom allergens in the text area, preserve them
+    let customAllergens = currentValue.split(',').map(s => s.trim()).filter(s => s);
+    let commonAllergens = ['milk', 'eggs', 'peanuts', 'tree nuts', 'fish', 'shellfish', 'wheat', 'soy'];
+    
+    // Remove common allergens from custom list
+    customAllergens = customAllergens.filter(allergen => 
+        !commonAllergens.some(common => allergen.toLowerCase().includes(common))
+    );
+    
+    // Combine selected checkbox allergens with custom ones
+    let allAllergens = [...selectedAllergens, ...customAllergens];
+    allergenField.value = allAllergens.join(', ');
+}
+
+// Add event listeners to allergen checkboxes
+document.querySelectorAll('input[type="checkbox"][value]').forEach(checkbox => {
+    checkbox.addEventListener('change', updateAllergens);
+});
+
+// Form validation and submission
+document.getElementById('recipeForm').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Submitting...';
+    submitBtn.disabled = true;
+});
+
+// Character count for text areas (optional enhancement)
+function addCharacterCount(textareaId, maxLength) {
+    const textarea = document.getElementById(textareaId);
+    if (textarea) {
+        const countDiv = document.createElement('div');
+        countDiv.className = 'form-text text-end';
+        countDiv.id = textareaId + '-count';
+        textarea.parentNode.appendChild(countDiv);
+        
+        function updateCount() {
+            const remaining = maxLength - textarea.value.length;
+            countDiv.textContent = `${textarea.value.length}/${maxLength} characters`;
+            countDiv.className = remaining < 50 ? 'form-text text-end text-warning' : 'form-text text-end';
+        }
+        
+        textarea.addEventListener('input', updateCount);
+        updateCount();
+    }
+}
+
+// Add character counts (optional)
+// addCharacterCount('instruction', 2000);
+// addCharacterCount('notes', 500);
+</script>
+
+<style>
+.form-control:focus, .form-select:focus {
+    border-color: #D2691E;
+    box-shadow: 0 0 0 0.2rem rgba(210, 105, 30, 0.25);
+}
+
+.form-check-input:checked {
+    background-color: #D2691E;
+    border-color: #D2691E;
+}
+
+.card {
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #D2691E, #FF8C42);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #B8591A, #E67A35);
+    transform: translateY(-1px);
+}
+
+#imagePreview img {
+    border: 2px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+#imagePreview img:hover {
+    transform: scale(1.05);
+}
+
+.form-label {
+    color: #2c3e50;
+}
+
+.alert {
+    border-left: 4px solid #17a2b8;
+}
+</style>
+{% endblock %}

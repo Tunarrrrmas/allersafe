@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Delete {{ message_type }} Message</title>
+    <style>
+        body { font-family: Arial; background-color: #fffaf3; padding: 30px; }
+        .container { background: white; padding: 20px; border-radius: 10px; max-width: 500px; margin: auto; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        button { background-color: #b23a2e; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; margin: 10px; }
+        button:hover { background-color: #8e2f24; }
+        a { text-decoration: none; color: #b23a2e; margin: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Delete {{ message_type }} Message</h2>
+        <p>Are you sure you want to delete this message?</p>
+        <p><strong>From:</strong> {{ message.name }} ({{ message.email }})</p>
+        <p><strong>Subject:</strong> {{ message.subject }}</p>
+        <form method="POST" action="{{ url_for('delete_message', message_type=message_type|lower, message_id=message.id) }}">
+            <button type="submit">Yes, Delete</button>
+        </form>
+        <a href="{{ url_for('admin_messages', message_type=message_type|lower) }}">Cancel</a>
+    </div>
+</body>
+</html>

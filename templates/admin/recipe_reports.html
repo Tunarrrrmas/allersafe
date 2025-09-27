@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Recipe Reports{% endblock %}
+{% block page_title %}Recipe Reports{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Summary Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card text-white" style="background-color: var(--danger-color);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ reports|selectattr('status', 'equalto', 'pending')|list|length }}</h4>
+                            <p class="mb-0">Pending Reports</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card text-white" style="background-color: var(--success-color);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ reports|selectattr('status', 'equalto', 'handled')|list|length }}</h4>
+                            <p class="mb-0">Handled Reports</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card text-white" style="background-color: var(--accent-color);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ reports|length }}</h4>
+                            <p class="mb-0">Total Reports</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-list fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card" style="background-color: var(--warning-color); color: var(--text-light);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ reports|selectattr('created_at')|list|length if reports else 0 }}</h4>
+                            <p class="mb-0">This Month</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-calendar fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports List -->
+    {% if reports %}
+        {% for report in reports %}
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-0">
+                            <i class="fas fa-utensils me-2"></i>
+                            {{ report.recipe_name or 'Unknown Recipe' }}
+                        </h6>
+                        <small class="text-muted">Report ID: #{{ report.id }}</small>
+                    </div>
+                    <div>
+                        <span class="badge status-badge {% if report.status == 'pending' %}bg-warning{% else %}bg-success{% endif %}">
+                            {{ report.status.title() }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h6><i class="fas fa-exclamation-circle me-2" style="color: var(--danger-color);"></i>Reason</h6>
+                            <p class="mb-2">{{ report.reason or 'No reason provided' }}</p>
+                            
+                            {% if report.description %}
+                            <h6><i class="fas fa-comment me-2" style="color: var(--accent-color);"></i>Additional Details</h6>
+                            <p class="mb-2">{{ report.description }}</p>
+                            {% endif %}
+                            
+                            {% if report.action_taken %}
+                            <h6><i class="fas fa-cogs me-2" style="color: var(--success-color);"></i>Action Taken</h6>
+                            <p class="mb-2">{{ report.action_taken }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-info-circle me-2" style="color: var(--accent-color);"></i>Report Info</h6>
+                            <p class="mb-1"><strong>Reporter:</strong> {{ report.reporter_name or 'Anonymous' }}</p>
+                            <p class="mb-1"><strong>Date:</strong> {{ report.created_at }}</p>
+                            <p class="mb-1"><strong>Recipe ID:</strong> {{ report.recipe_id }}</p>
+                            {% if report.admin_name %}
+                            <p class="mb-1"><strong>Handled by:</strong> {{ report.admin_name }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if report.status == 'pending' %}
+                    <hr>
+                    <div class="report-actions">
+                        <!-- Mark Resolved Form -->
+                        <form method="POST" action="{{ url_for('handle_report', report_id=report.id) }}" class="d-inline">
+                            <input type="hidden" name="action" value="Issue resolved">
+                            <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Are you sure you want to mark this report as resolved?')">
+                                <i class="fas fa-check me-1"></i>Mark Resolved
+                            </button>
+                        </form>
+                        
+                        <!-- Send Warning Form -->
+                        <form method="POST" action="{{ url_for('handle_report', report_id=report.id) }}" class="d-inline">
+                            <input type="hidden" name="action" value="Warning sent to user">
+                            <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Are you sure you want to send a warning to the user?')">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Send Warning
+                            </button>
+                        </form>
+                        
+                        <!-- Remove Recipe Form -->
+                        <form method="POST" action="{{ url_for('handle_report', report_id=report.id) }}" class="d-inline">
+                            <input type="hidden" name="action" value="Recipe removed for policy violation">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to remove this recipe? This action cannot be undone.')">
+                                <i class="fas fa-trash me-1"></i>Remove Recipe
+                            </button>
+                        </form>
+                        
+                        <!-- View Recipe Link -->
+                        <a href="{{ url_for('recipe_details', recipe_id=report.recipe_id) }}" class="btn btn-info btn-sm" target="_blank">
+                            <i class="fas fa-eye me-1"></i>View Recipe
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5>No reports found</h5>
+                <p class="text-muted">No recipe reports have been submitted yet.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .report-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .btn-sm {
+        font-size: 0.8em;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .report-actions form {
+        margin: 0;
+    }
+</style>
+{% endblock %}
