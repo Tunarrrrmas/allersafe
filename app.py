@@ -1154,12 +1154,9 @@ def recipe_reports():
         return redirect(url_for('dashboard'))
 
 @app.route("/handle-report/<int:report_id>", methods=["POST"])
+@login_required  # Make sure you have this decorator
 def handle_report(report_id):
     """Handle a recipe report (approve / reject / ignore)"""
-
-    if "admin_id" not in session:
-        flash("You must be logged in as admin.", "danger")
-        return redirect(url_for("login_admin"))
 
     action = request.form.get("action")   # expected: approved / rejected / ignored
     notes = request.form.get("notes")     # optional text
@@ -1167,7 +1164,7 @@ def handle_report(report_id):
     conn = sqlite3.connect("admin_panel.db")
     conn.row_factory = sqlite3.Row
 
-    # Fetch the report (no guideline join, reason is stored as TEXT)
+    # CORRECTED: Simple select without JOIN since there's no guideline_id
     report = conn.execute(
         "SELECT * FROM recipe_reports WHERE id = ?",
         (report_id,)
@@ -1176,12 +1173,12 @@ def handle_report(report_id):
     if not report:
         conn.close()
         flash("Report not found.", "danger")
-        return redirect(url_for("view_reports"))
+        return redirect(url_for("recipe_reports"))  # Fixed redirect target
 
     if action not in ["approved", "rejected", "ignored"]:
         conn.close()
         flash("Invalid action.", "danger")
-        return redirect(url_for("view_reports"))
+        return redirect(url_for("recipe_reports"))  # Fixed redirect target
 
     # Update report status
     conn.execute(
@@ -1196,8 +1193,7 @@ def handle_report(report_id):
     conn.close()
 
     flash("Report updated successfully.", "success")
-    return redirect(url_for("view_reports"))
-
+    return redirect(url_for("recipe_reports"))  
 # ---------------------- GUIDELINES ----------------------
 @app.route('/guideline-management')
 @login_required
@@ -1392,6 +1388,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
