@@ -146,24 +146,55 @@ def dashboard():
         user_count = conn_user.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         active_users = conn_user.execute("SELECT COUNT(*) FROM users WHERE status='active'").fetchone()[0]
 
-    # --- Recipes from recipe.db ---
+    # --- Recipes from recipe.db (using SQLAlchemy) ---
     recipe_count = Recipe.query.count()
 
     # --- Recent audit logs from admin_panel.db ---
     logs = get_audit_logs(limit=5)
 
-    # --- Reports from admin_panel.db ---
+    # --- Reports from admin_panel.db (FIXED VERSION) ---
     with sqlite3.connect("admin_panel.db") as conn_admin:
         conn_admin.row_factory = sqlite3.Row
-        reports = conn_admin.execute("""
-            SELECT rr.id, rr.reason, rr.description, rr.status, rr.created_at,
-                   u.username AS reporter, r.name AS recipe_name
-            FROM recipe_reports rr
-            JOIN users u ON rr.reporter_id = u.id
-            JOIN recipes r ON rr.recipe_id = r.id
-            ORDER BY rr.created_at DESC
+        
+        # Get basic report data first (no cross-database joins)
+        raw_reports = conn_admin.execute("""
+            SELECT id, recipe_id, reporter_id, reason, description, status, created_at
+            FROM recipe_reports 
+            ORDER BY created_at DESC
             LIMIT 10
         """).fetchall()
+
+    # Enhance reports with data from other databases
+    reports = []
+    for report in raw_reports:
+        report_dict = dict(report)
+        
+        # Get reporter name from user.db
+        if report['reporter_id']:
+            try:
+                with sqlite3.connect("user.db") as conn_user:
+                    conn_user.row_factory = sqlite3.Row
+                    user = conn_user.execute(
+                        "SELECT username FROM users WHERE id = ?", 
+                        (report['reporter_id'],)
+                    ).fetchone()
+                    report_dict['reporter'] = user['username'] if user else 'Unknown User'
+            except:
+                report_dict['reporter'] = 'Unknown User'
+        else:
+            report_dict['reporter'] = 'Anonymous'
+        
+        # Get recipe name using SQLAlchemy
+        if report['recipe_id']:
+            try:
+                recipe = Recipe.query.get(report['recipe_id'])
+                report_dict['recipe_name'] = recipe.name if recipe else f'Recipe #{report["recipe_id"]}'
+            except:
+                report_dict['recipe_name'] = f'Recipe #{report["recipe_id"]}'
+        else:
+            report_dict['recipe_name'] = 'Unknown Recipe'
+        
+        reports.append(report_dict)
 
     return render_template(
         'dashboard.html',
@@ -172,9 +203,8 @@ def dashboard():
         recipe_count=recipe_count,
         active_users=active_users,
         logs=logs,
-        reports=reports   # 🔹 pass reports into template
+        reports=reports
     )
-
 
 
 # --- Helper function to get DB connection ---
@@ -1380,6 +1410,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
