@@ -115,7 +115,7 @@
         }
 
         /* Recipe action buttons */
-        .login-prompt-btn {
+        .view-recipe-btn, .login-prompt-btn {
             display: inline-block;
             color: white;
             text-decoration: none;
@@ -126,6 +126,18 @@
             font-weight: bold;
             transition: all 0.3s;
             cursor: pointer;
+        }
+        
+        .view-recipe-btn {
+            background: #c96f4a;
+        }
+        
+        .view-recipe-btn:hover {
+            background: #a55533;
+            transform: translateY(-2px);
+        }
+        
+        .login-prompt-btn {
             background: linear-gradient(135deg, #b23a2e 0%, #8e2f24 100%);
             box-shadow: 0 4px 15px rgba(178, 58, 46, 0.3);
         }
@@ -258,56 +270,47 @@
     <div class="navbar">
         <div class="links">
             <a href="javascript:void(0)" id="filterBtn"><i class="fas fa-filter"></i> Filters</a>
-            <a href="#" onclick="showLoginAlert()"><i class="fas fa-user"></i> Login</a>
-            <a href="#" onclick="showRegisterAlert()"><i class="fas fa-user-plus"></i> Register</a>
-            <a href="#" onclick="showAdminAlert()"><i class="fas fa-user-shield"></i> Admin Login</a>
+            <a href="{{ url_for('login_user') }}"><i class="fas fa-user"></i> Login</a>
+            <a href="{{ url_for('register') }}"><i class="fas fa-user-plus"></i> Register</a>
+            <a href="{{ url_for('login') }}"><i class="fas fa-user-shield"></i> Admin Login</a>
         </div>
     </div>
 
     <!-- FOOD CARDS -->
     <div class="cards">
-        <!-- Sample Recipe 1 -->
-        <div class="card">
-            <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop" alt="Quinoa & Roasted Veggie Salad">
-            <h2>Quinoa & Roasted Veggie Salad</h2>
-            <p><strong>Allergens:</strong> gluten, dairy, nut, egg</p>
-            <div class="rating">
-                <strong>Rating:</strong> <span>⭐ 4.9</span>
-            </div>
-            <a href="javascript:void(0)" onclick="showLoginAlert()" class="login-prompt-btn">
-                <i class="fas fa-lock"></i> Login to view recipe
-            </a>
-        </div>
-
-        <!-- Sample Recipe 2 -->
-        <div class="card">
-            <img src="https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?w=400&h=300&fit=crop" alt="Creamy Pumpkin Soup">
-            <h2>Creamy Pumpkin Soup</h2>
-            <p><strong>Allergens:</strong> gluten, dairy, nut</p>
-            <div class="rating">
-                <strong>Rating:</strong> <span>⭐ 3.6</span>
-            </div>
-            <a href="javascript:void(0)" onclick="showLoginAlert()" class="login-prompt-btn">
-                <i class="fas fa-lock"></i> Login to view recipe
-            </a>
-        </div>
-
-        <!-- Sample Recipe 3 -->
-        <div class="card">
-            <img src="https://images.unsplash.com/photo-1547592180-85f173990554?w=400&h=300&fit=crop" alt="Seaweed soup">
-            <h2>Seaweed soup</h2>
-            <p><strong>Allergens:</strong> gluten, fish</p>
-            <div class="rating">
-                <strong>Rating:</strong> <span>⭐ 5.0</span>
-            </div>
-            <a href="javascript:void(0)" onclick="showLoginAlert()" class="login-prompt-btn">
-                <i class="fas fa-lock"></i> Login to view recipe
-            </a>
-        </div>
+        {% if recipes %}
+            {% for recipe in recipes %}
+                <div class="card">
+                    {% if recipe.photo %}
+                        <img src="{{ url_for('static', filename='uploads/' ~ recipe.photo) }}" alt="{{ recipe.name }}">
+                    {% else %}
+                        <img src="https://images.unsplash.com/photo-1546554137-f86b9593a222?w=400&h=300&fit=crop" alt="Default recipe image">
+                    {% endif %}
+                    <h2>{{ recipe.name }}</h2>
+                    <p><strong>Allergens:</strong> {{ recipe.allergens }}</p>
+                    <div class="rating">
+                        <strong>Rating:</strong> <span>⭐ {{ recipe.rating }}</span>
+                    </div>
+                    
+                    <!-- Check if user is logged in to show proper button -->
+                    {% if session.user %}
+                        <a href="{{ url_for('recipe_details', recipe_id=recipe.id) }}" class="view-recipe-btn">
+                            View Full Recipe
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('login_user') }}" class="login-prompt-btn">
+                            <i class="fas fa-lock"></i> Login to view recipe
+                        </a>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="no-recipes">No recipes available 😢</p>
+        {% endif %}
     </div>
 
     <!-- FLOATING MANUAL BUTTON -->
-    <a href="javascript:void(0)" id="ManualBtn" title="Manual" onclick="showManualAlert()">
+    <a href="{{ url_for('manual') }}" id="ManualBtn" title="Manual">
         <i class="fas fa-question"></i>
     </a>
 
@@ -316,7 +319,7 @@
         <div class="popup-content">
             <span class="close" id="closePopup">&times;</span>
             <h3>FILTER ALLERGIES</h3>
-            <form onsubmit="applyFilters(event)">
+            <form method="GET" action="{{ url_for('main') }}">
                 <label><input type="checkbox" name="allergy" value="gluten"> Gluten</label>
                 <label><input type="checkbox" name="allergy" value="dairy"> Dairy</label>
                 <label><input type="checkbox" name="allergy" value="nut"> Nuts</label>
@@ -346,38 +349,6 @@ window.addEventListener("click", (e) => {
         popup.style.display = "none";
     }
 });
-
-// Login alert function
-function showLoginAlert() {
-    alert("Please login to access this feature. In a real application, this would redirect to the login page.");
-}
-
-function showRegisterAlert() {
-    alert("Please register to create an account. In a real application, this would redirect to the registration page.");
-}
-
-function showAdminAlert() {
-    alert("Admin login required. In a real application, this would redirect to the admin login page.");
-}
-
-function showManualAlert() {
-    alert("User manual would open here. This would contain help information about using AllerSafe Recipe.");
-}
-
-// Apply filters function
-function applyFilters(event) {
-    event.preventDefault();
-    const checkedBoxes = document.querySelectorAll('input[name="allergy"]:checked');
-    const selectedAllergies = Array.from(checkedBoxes).map(cb => cb.value);
-    
-    if (selectedAllergies.length === 0) {
-        alert("Please select at least one allergy to filter by.");
-        return;
-    }
-    
-    alert(`Filtering recipes to exclude: ${selectedAllergies.join(', ')}.\n\nIn a real application, this would filter the displayed recipes.`);
-    popup.style.display = "none";
-}
 </script>
 </body>
 </html>
