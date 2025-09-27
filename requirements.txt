@@ -1,0 +1,11 @@
+# Core Flask Framework
+Flask==2.3.3
+
+# WSGI Server for Production
+waitress==2.1.2
+
+# Email Services
+Flask-Mail==0.9.1
+
+# Environment Variables
+python-dotenv==1.0.0
