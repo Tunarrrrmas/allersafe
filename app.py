@@ -1403,7 +1403,7 @@ def toggle_guideline(guideline_id):
 @app.route('/suspend-recipe/<int:recipe_id>')
 @login_required
 def suspend_recipe(recipe_id):
-    conn = sqlite3.connect("admin_panel.db")
+    conn = sqlite3.connect("recipe.db")
     conn.row_factory = sqlite3.Row
     
     try:
@@ -1515,6 +1515,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
