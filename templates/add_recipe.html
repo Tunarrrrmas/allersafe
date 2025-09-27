@@ -1,4 +1,3 @@
-html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -99,18 +98,13 @@ html
         <label>RATING (0-5):</label>
         <input type="number" step="0.1" name="rating" min="0" max="5">
 
-        <h3>Ingredients</h3>
-        <ul>
-            {% for ingredient in recipe.ingredients %}
-                <li>
-                    {% if ingredient.measurement %}
-                        {{ ingredient.measurement }} {{ ingredient.name }}
-                    {% else %}
-                        {{ ingredient.name }}
-                    {% endif %}
-                </li>
-            {% endfor %}
-        </ul>
+        <label>INGREDIENTS (one per line):</label>
+        <textarea name="ingredients" rows="6" placeholder="eg.
+            Quinoa - 1 cup
+            Bell pepper - 2, sliced
+            Zucchini - 1, diced
+            Cherry Tomatoes - 1 cup
+            Olive Oil - 2 tbsp"></textarea>
 
         <label>INSTRUCTION:</label>
         <textarea name="instruction" rows="6"></textarea>
@@ -121,5 +115,3 @@ html
 
 </body>
 </html>
-
-
