@@ -10,8 +10,6 @@
         <span>Recipe Reports</span>
         <span class="badge bg-primary">{{ reports|length }} reports</span>
     </div>
-
-```
 <div class="card-body p-0">
     {% if reports %}
     <div class="table-responsive">
@@ -40,7 +38,7 @@
 
                     <!-- Status -->
                     <td>
-                        <span class="badge bg-{{ 'success' if report.status == 'handled' else 'warning' }}">
+                        <span class="badge bg-{{ 'success' if report.status == 'resolved' else 'warning' }}">
                             {{ report.status.title() }}
                         </span>
                     </td>
@@ -90,7 +88,7 @@
     </div>
     {% endif %}
 </div>
-```
+
 
 </div>
 {% endblock %}
