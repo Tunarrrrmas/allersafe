@@ -549,6 +549,56 @@ def toggle_guideline_status(guideline_id, is_active):
     finally:
         conn.close()
 
+def check_guidelines_table():
+    """Check if guidelines table exists and create it if needed"""
+    try:
+        conn = sqlite3.connect('admin_panel.db')
+        cursor = conn.cursor()
+        
+        # Check if table exists
+        cursor.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='guidelines'
+        """)
+        
+        if not cursor.fetchone():
+            # Create guidelines table
+            cursor.execute('''
+                CREATE TABLE guidelines (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    content TEXT,
+                    category TEXT,
+                    severity TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Insert some default guidelines
+            default_guidelines = [
+                ("Inappropriate Content", "Recipe contains inappropriate or offensive content", "Content", "High"),
+                ("Incorrect Information", "Recipe contains incorrect or dangerous information", "Safety", "High"),
+                ("Spam", "Recipe appears to be spam or promotional content", "Content", "Medium"),
+                ("Copyright Violation", "Recipe violates copyright or intellectual property", "Legal", "High"),
+                ("Missing Allergen Information", "Recipe does not properly list allergens", "Safety", "Medium")
+            ]
+            
+            cursor.executemany(
+                "INSERT INTO guidelines (title, content, category, severity) VALUES (?, ?, ?, ?)",
+                default_guidelines
+            )
+            
+            print("Guidelines table created with default entries")
+        
+        conn.commit()
+        conn.close()
+        
+    except Exception as e:
+        print(f"Error checking/creating guidelines table: {e}")
+
+# Call this function during app initialization
+check_guidelines_table()
 # ---------------------- USER WARNINGS ----------------------
 
 def add_user_warning(user_id, admin_id, guideline_id=None, custom_reason=None, severity='warning'):
@@ -800,3 +850,4 @@ if __name__ == "__main__":
     except Exception as e:
 
         print(f"Demo logging failed: {e}")
+
