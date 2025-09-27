@@ -595,7 +595,6 @@ def reset_password_user():
         flash("An error occurred. Please try again.", "error")
         return render_template("reset_password_user.html", email=email)
 
-# Add this function to your app.py
 def add_password_column():
     conn = get_db_connection()
     try:
@@ -608,29 +607,6 @@ def add_password_column():
         else:
             print(f"Error adding column: {e}")
     conn.close()
-
-# ---------------- CONTACT MESSAGES ----------------
-class ContactMessage(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(120), nullable=False)
-    subject = db.Column(db.String(200))
-    message = db.Column(db.Text, nullable=False)
-    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-# ---------------- COMPLAINT / SUGGESTION ----------------
-class ComplaintSuggestion(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, nullable=True)  # optional, if logged in
-    type = db.Column(db.String(50), nullable=False)  # 'complaint' or 'suggestion'
-    title = db.Column(db.String(200), nullable=False)
-    message = db.Column(db.Text, nullable=False)
-    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(20), default='pending')  # 'pending', 'reviewed', 'resolved'
-
-with app.app_context():
-    db.create_all()
-
 # ---------------------- UPGRADE DB (audit log helper) ----------------------
 @app.route('/upgrade-db')
 @login_required
@@ -1515,6 +1491,7 @@ def submit_recipe():
 if __name__ == '__main__':
     app.run(debug=True)
     
+
 
 
 
