@@ -206,13 +206,6 @@ def dashboard():
         reports=reports
     )
 
-
-# --- Helper function to get DB connection ---
-def get_db_connection():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    return conn
-
 # Manual
 @app.route("/manual")
 def manual():
@@ -1112,34 +1105,8 @@ def report_recipe(recipe_id):
         else:
             flash('Error submitting report. Please try again.', 'danger')
             return redirect(url_for('report_recipe', recipe_id=recipe_id))
-
-    # --- Main flow ---
-    recipe = Recipe.query.get_or_404(recipe_id)  # Use SQLAlchemy to get recipe
-    if not recipe:
-        flash('Recipe not found.', 'danger')
-        return redirect(url_for('home'))
-
-    guidelines = get_active_guidelines()
-
-    if request.method == 'POST':
-        errors, validated_guideline_id, validated_description = validate_report_form(request.form)
-
-        if errors:
-            for error in errors:
-                flash(error, "danger")
-        else:
-            user_id = get_user_id_from_session()
-            if not user_id:
-                flash("You must be logged in to report a recipe.", "danger")
-                return redirect(url_for("login_user"))
-
-            if submit_report(recipe_id, user_id, validated_guideline_id, validated_description):
-                flash('Recipe reported successfully. Thank you for helping keep our community safe.', 'success')
-                return redirect(url_for('recipe_details', recipe_id=recipe_id))
-
-    return render_template('report_recipe.html', recipe=recipe, guidelines=guidelines)
         
-@app.route('/recipe-reports', methods=['GET', 'POST'])  # Add POST method
+@app.route('/recipe-reports', methods=['GET', 'POST'])
 @login_required
 def recipe_reports():
     """View all recipe reports and handle report actions"""
@@ -1154,45 +1121,129 @@ def recipe_reports():
             flash('Missing report ID or action', 'danger')
             return redirect(url_for('recipe_reports'))
         
-        admin_conn = sqlite3.connect("admin_panel.db")
-        recipe_conn = sqlite3.connect("recipes.db")
-        admin_conn.row_factory = sqlite3.Row
-        recipe_conn.row_factory = sqlite3.Row
-        
         try:
-            # Get report from admin database
-            report = admin_conn.execute("SELECT * FROM recipe_reports WHERE id = ?", (report_id,)).fetchone()
+            # Connect to admin database for reports
+            admin_conn = sqlite3.connect("admin_panel.db")
+            admin_conn.row_factory = sqlite3.Row
+            
+            # Get report details
+            report = admin_conn.execute(
+                "SELECT * FROM recipe_reports WHERE id = ?", 
+                (report_id,)
+            ).fetchone()
             
             if not report:
                 flash('Report not found', 'danger')
+                admin_conn.close()
                 return redirect(url_for('recipe_reports'))
             
+            recipe_id = report['recipe_id']
+            
+            # Handle the action
             if action == "approved":
-                # Delete from 'recipe' table
-                recipe_conn.execute("DELETE FROM recipe WHERE id = ?", (report["recipe_id"],))
-                recipe_conn.commit()
-                flash('Report approved. Recipe has been deleted.', 'success')
+                # Delete the recipe using SQLAlchemy
+                recipe = Recipe.query.get(recipe_id)
+                if recipe:
+                    recipe_name = recipe.name
+                    db.session.delete(recipe)
+                    db.session.commit()
+                    
+                    # Log the action
+                    add_audit_log(
+                        session['admin_id'], 
+                        'Recipe Deleted (Report)', 
+                        'recipe', 
+                        recipe_id,
+                        f"Deleted recipe '{recipe_name}' based on report #{report_id}", 
+                        request.remote_addr
+                    )
+                    
+                    flash(f"Recipe '{recipe_name}' has been removed.", 'success')
+                else:
+                    flash('Recipe not found or already deleted.', 'warning')
+                
+                # Update report status
+                admin_conn.execute(
+                    "UPDATE recipe_reports SET status = 'resolved', handled_by = ?, action_taken = ? WHERE id = ?",
+                    (session.get("admin_id"), "Recipe deleted", report_id)
+                )
                 
             elif action == "rejected":
+                # Dismiss the report
+                admin_conn.execute(
+                    "UPDATE recipe_reports SET status = 'resolved', handled_by = ?, action_taken = ? WHERE id = ?",
+                    (session.get("admin_id"), "Report dismissed", report_id)
+                )
                 flash('Report dismissed. Recipe will remain published.', 'info')
-                
-            elif action == "ignored":
-                flash('Report ignored.', 'warning')
             
-            # Update report status
-            admin_conn.execute(
-                "UPDATE recipe_reports SET status = 'resolved', handled_by = ?, action_taken = ? WHERE id = ?",
-                (session.get("admin_id", "admin"), f"{action}. Notes: {notes}", report_id)
-            )
             admin_conn.commit()
+            admin_conn.close()
             
         except Exception as e:
             flash(f'Error handling report: {str(e)}', 'danger')
-        finally:
-            admin_conn.close()
-            recipe_conn.close()
         
         return redirect(url_for('recipe_reports'))
+    
+    # Handle GET requests (show reports)
+    try:
+        # Get reports from admin_panel.db
+        admin_conn = sqlite3.connect("admin_panel.db")
+        admin_conn.row_factory = sqlite3.Row
+        
+        reports = admin_conn.execute("""
+            SELECT id, recipe_id, reporter_id, reason, description, 
+                   status, created_at, handled_by, action_taken
+            FROM recipe_reports 
+            ORDER BY created_at DESC
+        """).fetchall()
+        
+        admin_conn.close()
+        
+        # Enhance reports with additional data
+        enhanced_reports = []
+        for report in reports:
+            report_dict = dict(report)
+            
+            # Get recipe name from recipe.db using SQLAlchemy
+            if report_dict['recipe_id']:
+                try:
+                    recipe = Recipe.query.get(report_dict['recipe_id'])
+                    report_dict['recipe_name'] = recipe.name if recipe else f"Recipe #{report_dict['recipe_id']} (Deleted)"
+                except:
+                    report_dict['recipe_name'] = f"Recipe #{report_dict['recipe_id']}"
+            else:
+                report_dict['recipe_name'] = 'Unknown Recipe'
+            
+            # Get reporter username from user.db
+            if report_dict['reporter_id']:
+                try:
+                    user = get_user_by_id(report_dict['reporter_id'])
+                    report_dict['reporter'] = user['username'] if user else 'Unknown User'
+                    report_dict['reporter_name'] = report_dict['reporter']
+                except:
+                    report_dict['reporter'] = 'Unknown User'
+                    report_dict['reporter_name'] = 'Unknown User'
+            else:
+                report_dict['reporter'] = 'Anonymous'
+                report_dict['reporter_name'] = 'Anonymous'
+            
+            # Get admin name if handled
+            if report_dict['handled_by']:
+                try:
+                    admin = get_admin_by_id(report_dict['handled_by'])
+                    report_dict['admin_name'] = admin['username'] if admin else 'Admin'
+                except:
+                    report_dict['admin_name'] = 'Admin'
+            else:
+                report_dict['admin_name'] = None
+            
+            enhanced_reports.append(report_dict)
+        
+        return render_template('recipe_reports.html', reports=enhanced_reports)
+        
+    except Exception as e:
+        flash(f'Error loading reports: {str(e)}', 'danger')
+        return render_template('recipe_reports.html', reports=[])
     
     # Handle GET requests (show reports)
     try:
@@ -1330,7 +1381,7 @@ def toggle_guideline(guideline_id):
 @app.route('/suspend-recipe/<int:recipe_id>')
 @login_required
 def suspend_recipe(recipe_id):
-    conn = sqlite3.connect("recipe.db")  # ✅ correct filename
+    conn = sqlite3.connect("recipe.db") 
     
     try:
         # First add status column if it doesn't exist
@@ -1426,7 +1477,7 @@ def user_submit_recipe():
 
 @app.route('/submit-recipe', methods=['GET', 'POST'])
 def submit_recipe():
-    # This route is a stub in your original: keep placeholder if you extend
+    # This route is a stub in original: keep placeholder 
     prep_time = request.form.get('prep_time') if request.method == 'POST' else None
     cook_time = request.form.get('cook_time') if request.method == 'POST' else None
     servings = request.form.get('servings') if request.method == 'POST' else None
@@ -1436,29 +1487,3 @@ def submit_recipe():
 # ---------------------- RUN ----------------------
 if __name__ == '__main__':
     app.run(debug=True)
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
