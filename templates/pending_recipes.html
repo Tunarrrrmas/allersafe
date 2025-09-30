@@ -27,36 +27,81 @@
                     <tr>
                         <td>
                             <div class="d-flex align-items-center">
-                                {% if recipe.image %}
-                                <img src="{{ url_for('static', filename='uploads/recipes/' + recipe.image) }}" alt="{{ recipe.title }}" class="rounded me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                {% if recipe.photo %}
+                                <img src="{{ url_for('static', filename='uploads/' + recipe.photo) }}" alt="{{ recipe.name }}" class="rounded me-2" style="width: 40px; height: 40px; object-fit: cover;">
                                 {% else %}
                                 <div class="bg-secondary rounded me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
                                     <i class="fas fa-utensils text-light"></i>
                                 </div>
                                 {% endif %}
                                 <div>
-                                    <div class="fw-bold">{{ recipe.title }}</div>
+                                    <div class="fw-bold">{{ recipe.name or recipe.title }}</div>
                                     <div class="small text-muted">{{ recipe.ingredients|length }} ingredients</div>
                                 </div>
                             </div>
                         </td>
                         <td>{{ recipe.author.username }}</td>
-                        <td>{{ recipe.created_at.strftime('%Y-%m-%d') }}</td>
-                        <td>{{ recipe.category.name }}</td>
+                        <td>{{ recipe.submitted_at.strftime('%Y-%m-%d') if recipe.submitted_at else 'N/A' }}</td>
+                        <td>{{ recipe.category.name if recipe.category else 'User Submission' }}</td>
                         <td>
                             <div class="btn-group">
-                                <a href="{{ url_for('view_recipe', recipe_id=recipe.id) }}" class="btn btn-sm btn-info" target="_blank">
+                                <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#viewModal{{ recipe.id }}">
                                     <i class="fas fa-eye"></i> View
-                                </a>
-                                <a href="{{ url_for('approve_recipe', recipe_id=recipe.id) }}" class="btn btn-sm btn-success">
+                                </button>
+                                <a href="{{ url_for('approve_recipe', recipe_id=recipe.id) }}" class="btn btn-sm btn-success" onclick="return confirm('Approve this recipe?')">
                                     <i class="fas fa-check"></i> Approve
                                 </a>
-                                <a href="{{ url_for('reject_recipe', recipe_id=recipe.id) }}" class="btn btn-sm btn-danger">
+                                <a href="{{ url_for('reject_recipe', recipe_id=recipe.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Reject this recipe?')">
                                     <i class="fas fa-times"></i> Reject
                                 </a>
                             </div>
                         </td>
                     </tr>
+
+                    <!-- View Modal for each recipe -->
+                    <div class="modal fade" id="viewModal{{ recipe.id }}" tabindex="-1" aria-labelledby="viewModalLabel{{ recipe.id }}" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="viewModalLabel{{ recipe.id }}">{{ recipe.name or recipe.title }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    {% if recipe.photo %}
+                                    <img src="{{ url_for('static', filename='uploads/' + recipe.photo) }}" alt="{{ recipe.name }}" class="img-fluid rounded mb-3" style="max-height: 300px; width: 100%; object-fit: cover;">
+                                    {% endif %}
+                                    
+                                    <h6>Allergens:</h6>
+                                    <p>{{ recipe.allergens or 'None specified' }}</p>
+                                    
+                                    <h6>Ingredients:</h6>
+                                    <ul>
+                                        {% for ingredient in recipe.ingredients %}
+                                        <li>{{ ingredient.name }}{% if ingredient.measurement %} - {{ ingredient.measurement }}{% endif %}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    
+                                    <h6>Instructions:</h6>
+                                    <p style="white-space: pre-line;">{{ recipe.instruction }}</p>
+                                    
+                                    <hr>
+                                    <p class="text-muted small">
+                                        <strong>Submitted by:</strong> {{ recipe.author.username }}<br>
+                                        <strong>Date:</strong> {{ recipe.submitted_at.strftime('%Y-%m-%d %H:%M') if recipe.submitted_at else 'N/A' }}
+                                    </p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <a href="{{ url_for('approve_recipe', recipe_id=recipe.id) }}" class="btn btn-success" onclick="return confirm('Approve this recipe?')">
+                                        <i class="fas fa-check"></i> Approve
+                                    </a>
+                                    <a href="{{ url_for('reject_recipe', recipe_id=recipe.id) }}" class="btn btn-danger" onclick="return confirm('Reject this recipe?')">
+                                        <i class="fas fa-times"></i> Reject
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     {% endfor %}
                 </tbody>
             </table>
