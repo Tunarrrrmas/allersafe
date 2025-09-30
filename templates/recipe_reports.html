@@ -11,83 +11,183 @@
         <span class="badge bg-primary">{{ reports|length }} reports</span>
     </div>
 
-<div class="card-body p-0">
-    {% if reports %}
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Recipe</th>
-                    <th>Reporter</th>
-                    <th>Reason</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th class="text-center">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for report in reports %}
-                <tr>
-                    <!-- Recipe -->
-                    <td>{{ report.recipe_name or 'Unknown Recipe' }}</td>
+    <div class="card-body p-0">
+        {% if reports %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Recipe</th>
+                        <th>Reporter</th>
+                        <th>Reason</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in reports %}
+                    <tr>
+                        <!-- Recipe -->
+                        <td>
+                            <strong>{{ report.recipe_name or 'Unknown Recipe' }}</strong>
+                            {% if report.recipe_id %}
+                            <br><small class="text-muted">ID: {{ report.recipe_id }}</small>
+                            {% endif %}
+                        </td>
 
-                    <!-- Reporter -->
-                    <td>{{ report.reporter_name or 'Anonymous' }}</td>
+                        <!-- Reporter -->
+                        <td>{{ report.reporter or report.reporter_name or 'Anonymous' }}</td>
 
-                    <!-- Reason -->
-                    <td>{{ report.guideline_title or report.reason or 'N/A' }}</td>
+                        <!-- Reason -->
+                        <td>
+                            <span class="badge bg-info">{{ report.reason or 'N/A' }}</span>
+                        </td>
 
-                    <!-- Status -->
-                    <td>
-                        <span class="badge bg-{{ 'success' if report.status == 'resolved' else 'warning' }}">
-                            {{ report.status.title() }}
-                        </span>
-                    </td>
+                        <!-- Description -->
+                        <td>
+                            {% if report.description %}
+                            <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#descModal{{ report.id }}">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            {% else %}
+                            <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
 
-                    <!-- Date -->
-                    <td>{{ report.date_reported.strftime('%Y-%m-%d') if report.date_reported else 'N/A' }}</td>
+                        <!-- Status -->
+                        <td>
+                            <span class="badge bg-{{ 'success' if report.status == 'resolved' else 'warning' }}">
+                                {{ report.status.title() if report.status else 'Pending' }}
+                            </span>
+                        </td>
 
-                    <!-- Actions -->
-                    <td class="text-center">
-                        {% if report.status == 'pending' %}
-                        <div class="btn-group" role="group">
-                            <!-- Dismiss -->
-                            <form method="POST" action="{{ url_for('recipe_reports') }}" class="d-inline">
-                                <input type="hidden" name="report_id" value="{{ report.id }}">
-                                <input type="hidden" name="action" value="rejected">
-                                <input type="hidden" name="notes" value="Report dismissed">
-                                <button type="submit" class="btn btn-sm btn-success">
-                                    Dismiss
+                        <!-- Date -->
+                        <td>
+                            {% if report.created_at %}
+                                {{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at is not string else report.created_at[:16] }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="text-center">
+                            {% if report.status != 'resolved' %}
+                            <div class="btn-group" role="group">
+                                <!-- View Recipe -->
+                                {% if report.recipe_id %}
+                                <button type="button" class="btn btn-sm btn-info" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#recipeModal{{ report.id }}">
+                                    <i class="fas fa-eye"></i>
                                 </button>
-                            </form>
+                                {% endif %}
 
-                            <!-- Remove Recipe -->
-                            <form method="POST" action="{{ url_for('recipe_reports') }}" class="d-inline">
-                                <input type="hidden" name="report_id" value="{{ report.id }}">
-                                <input type="hidden" name="action" value="approved">
-                                <input type="hidden" name="notes" value="Recipe removed">
-                                <button type="submit" class="btn btn-sm btn-danger"
-                                    onclick="return confirm('This will delete the recipe permanently. Are you sure?')">
-                                    Remove
-                                </button>
-                            </form>
+                                <!-- Dismiss Report -->
+                                <form method="POST" action="{{ url_for('recipe_reports') }}" class="d-inline">
+                                    <input type="hidden" name="report_id" value="{{ report.id }}">
+                                    <input type="hidden" name="action" value="rejected">
+                                    <button type="submit" class="btn btn-sm btn-success" 
+                                            onclick="return confirm('Dismiss this report? The recipe will remain published.')">
+                                        <i class="fas fa-check"></i> Dismiss
+                                    </button>
+                                </form>
+
+                                <!-- Remove Recipe -->
+                                <form method="POST" action="{{ url_for('recipe_reports') }}" class="d-inline">
+                                    <input type="hidden" name="report_id" value="{{ report.id }}">
+                                    <input type="hidden" name="action" value="approved">
+                                    <button type="submit" class="btn btn-sm btn-danger"
+                                            onclick="return confirm('This will DELETE the recipe permanently. Are you sure?')">
+                                        <i class="fas fa-trash"></i> Remove
+                                    </button>
+                                </form>
+                            </div>
+                            {% else %}
+                            <span class="text-muted small">
+                                <i class="fas fa-check-circle"></i> Handled
+                                {% if report.handled_by %}
+                                <br>by {{ report.admin_name or 'Admin' }}
+                                {% endif %}
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <!-- Description Modal -->
+                    {% if report.description %}
+                    <div class="modal fade" id="descModal{{ report.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Report Description</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p><strong>Recipe:</strong> {{ report.recipe_name }}</p>
+                                    <p><strong>Reason:</strong> {{ report.reason }}</p>
+                                    <hr>
+                                    <p style="white-space: pre-wrap;">{{ report.description }}</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
                         </div>
-                        {% else %}
-                        <span class="text-muted">{{ report.action_taken or 'Handled' }}</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    </div>
+                    {% endif %}
+
+                    <!-- Recipe Preview Modal -->
+                    {% if report.recipe_id %}
+                    <div class="modal fade" id="recipeModal{{ report.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Recipe Preview: {{ report.recipe_name }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        <strong>Reported for:</strong> {{ report.reason }}
+                                    </div>
+                                    <p class="text-muted">This is a simplified preview. Full recipe details may require database lookup.</p>
+                                    <p><strong>Recipe ID:</strong> {{ report.recipe_id }}</p>
+                                    <p><strong>Reporter:</strong> {{ report.reporter or 'Anonymous' }}</p>
+                                    <p><strong>Report Date:</strong> {{ report.created_at }}</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <form method="POST" action="{{ url_for('recipe_reports') }}" class="d-inline">
+                                        <input type="hidden" name="report_id" value="{{ report.id }}">
+                                        <input type="hidden" name="action" value="approved">
+                                        <button type="submit" class="btn btn-danger"
+                                                onclick="return confirm('Delete this recipe?')">
+                                            <i class="fas fa-trash"></i> Delete Recipe
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-4 text-center">
+            <i class="fas fa-flag fa-3x text-muted mb-3"></i>
+            <h5>No Recipe Reports</h5>
+            <p class="text-muted">No reports have been submitted yet.</p>
+        </div>
+        {% endif %}
     </div>
-    {% else %}
-    <div class="p-4 text-center">
-        <i class="fas fa-flag fa-3x text-muted mb-3"></i>
-        <h5>No Recipe Reports</h5>
-        <p class="text-muted">No reports have been submitted yet.</p>
-    </div>
-    {% endif %}
 </div>
-</div>
+
 {% endblock %}
